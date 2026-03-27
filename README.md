@@ -20,52 +20,52 @@ All in a clean, responsive interface.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🔐 Authentication & Authorization
+### Authentication & Authorization
 
 * Secure login system (email/password)
 * Role-based access (Admin / User)
 * Protected routes and session persistence
 
-### 📊 Dashboard
+### Dashboard
 
 * Real-time KPI metrics
 * Task trends & resource usage charts
 * Activity feed
 
-### ✅ Task Management
+### Task Management
 
 * Create, update, delete tasks
 * Filter, search, and status tracking
 * Task detail modal view
 * Priority & deadline handling
 
-### 📝 Approval Workflow
+### Approval Workflow
 
 * Approve / reject system
 * Status categorization (Pending, Approved, Rejected)
 * Confirmation dialogs
 
-### 🧱 Resource Management
+### Resource Management
 
 * Add and manage resources
 * Status tracking and categorization
 * Search and filtering
 
-### 📈 Reports & Analytics
+### Reports & Analytics
 
 * Visual charts (Bar, Pie, Area)
 * KPI summaries
 * CSV export
 
-### 🔔 Notifications System
+### Notifications System
 
 * Real-time notifications
 * Mark as read / delete
 * Unread filtering
 
-### ⚙️ Settings & Profile
+### Settings & Profile
 
 * Profile editing
 * Password updates
@@ -73,7 +73,7 @@ All in a clean, responsive interface.
 * Theme switching (Light/Dark)
 * Preferences toggles
 
-### 🛡️ Admin Panel
+### Admin Panel
 
 * Restricted access
 * System-wide insights
