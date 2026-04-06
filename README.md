@@ -68,65 +68,45 @@ npm run dev
 
 ```bash
 cd backend
+php -S localhost:8000
+
+### 4. Setup database
+
 php setup.php
 php update_schema.php
 php setup_tasks.php
-php -S localhost:8000
-```
 
-## Environment Variables
+### 5. Open app
 
-The backend uses PHP configuration and default database settings defined in the backend scripts. For local setup, ensure your PHP environment can start the built-in server.
+http://localhost:5173
 
-## API Endpoints
+---
 
-- `POST /login.php`
-- `POST /register.php`
-- `GET /profile.php?id={user_id}`
-- `POST /update_profile.php`
-- `GET /tasks.php`
-- `GET /task_detail.php?id={task_id}`
-- `POST /create_task.php`
-- `POST /update_task.php`
-- `POST /delete_task.php`
+## 🔑 Default Login
 
-## Folder Structure
+Email: [admin@example.com](mailto:admin@example.com)
+Password: password123
 
-```text
-.
-├── backend/
-│   ├── approvals.php
-│   ├── create_task.php
-│   ├── dashboard.php
-│   ├── login.php
-│   ├── profile.php
-│   ├── register.php
-│   ├── tasks.php
-│   ├── update_task.php
-│   ├── setup.php
-│   ├── update_schema.php
-│   ├── setup_tasks.php
-│   └── uploads/
-├── public/
-│   └── robots.txt
-├── src/
-│   ├── admin/
-│   ├── components/
-│   ├── hooks/
-│   ├── lib/
-│   ├── pages/
-│   └── App.tsx
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
-```
+---
 
-## License
+## 📂 Project Structure
 
-MIT License
+src/
+backend/
+public/
+package.json
 
-## Author / Contact
+---
 
-Nirjar Goswami  
-GitHub: https://github.com/Nirjar26
+## 🚀 Summary
+
+FlowStone is a complete enterprise workflow system with:
+
+* Task & approval management
+* Resource tracking
+* Analytics dashboards
+* Role-based access control
+
+Built with modern frontend tools and a structured backend.
+
+---
