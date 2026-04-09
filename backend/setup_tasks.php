@@ -5,28 +5,7 @@ echo "Creating Tasks Management Schema\n";
 echo "=================================\n\n";
 
 try {
-    // Read and execute SQL file
-    $sql = file_get_contents('tasks_schema.sql');
-    
-    // Split by semicolon and execute each statement
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
-    
-    foreach ($statements as $statement) {
-        if (empty($statement) || substr($statement, 0, 2) === '--') {
-            continue;
-        }
-        
-        try {
-            $pdo->exec($statement);
-            // Get first 60 chars for display
-            $preview = substr(str_replace("\n", " ", $statement), 0, 60);
-            echo "✓ Executed: $preview...\n";
-        } catch (PDOException $e) {
-            if (strpos($e->getMessage(), 'Duplicate') === false) {
-                echo "⚠ Warning: " . $e->getMessage() . "\n";
-            }
-        }
-    }
+    flowstone_execute_sql_file($pdo, __DIR__ . '/tasks_schema.sql');
     
     echo "\n✓ Tasks schema created successfully!\n\n";
     

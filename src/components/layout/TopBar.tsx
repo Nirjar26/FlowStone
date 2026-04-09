@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Search, ChevronDown, Moon, Sun, LogOut, User, Settings } from "lucide-react";
+import { Bell, Search, ChevronDown, Moon, Sun, LogOut, User, Settings, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   title: string;
   subtitle?: string;
+}
+
+interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
 }
 
 export function TopBar({ title, subtitle }: TopBarProps) {
@@ -17,6 +26,7 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [user, setUser] = useState<{name: string; email: string; role: string; avatar: string | null} | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     fetchUserData();
@@ -46,6 +56,23 @@ export function TopBar({ title, subtitle }: TopBarProps) {
       }
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
+    }
+  };
+
+  const fetchRecentNotifications = async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const response = await fetch(`http://localhost:8000/notifications.php?userId=${storedUser.id}&filter=all`, {
+        headers: {
+          'Authorization': localStorage.getItem('token') || '',
+        },
+      });
+      const data = await response.json();
+      if (data.success && data.notifications) {
+        setRecentNotifications(data.notifications.slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent notifications:', error);
     }
   };
 
@@ -202,6 +229,9 @@ export function TopBar({ title, subtitle }: TopBarProps) {
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowUserMenu(false);
+              if (!showNotifications) {
+                fetchRecentNotifications();
+              }
             }}
             className="relative w-10 h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
           >
@@ -230,13 +260,30 @@ export function TopBar({ title, subtitle }: TopBarProps) {
                   <h3 className="font-semibold text-foreground">Notifications</h3>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
-                  {unreadCount > 0 ? (
-                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                  {recentNotifications.length > 0 ? (
+                    <div className="divide-y divide-border">
+                      {recentNotifications.map((notification) => (
+                        <div key={notification.id} className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              <div className={cn("w-2 h-2 rounded-full", !notification.read ? "bg-primary" : "bg-muted")}>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.message}</p>
+                              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {notification.time}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      No new notifications
+                      No notifications
                     </div>
                   )}
                 </div>

@@ -16,7 +16,7 @@ php setup_tasks.php    # Creates tasks tables and sample data
 **POST** `/login.php`
 ```json
 {
-  "email": "admin@example.com",
+  "email": "admin@flowstone.com",
   "password": "password123"
 }
 ```
@@ -105,9 +105,39 @@ php -S localhost:8000
 
 The APIs will be available at `http://localhost:8000/`
 
+## Seed Large Weekly Data
+
+For demo/stress testing with a lot of realistic data for the current week, run:
+
+```bash
+cd backend
+php seed_large_data.php
+```
+
+Default seed volume:
+- users: 80
+- tasks: 900
+- approvals: 300
+- resources: 180
+- notifications: 1100
+- activities: 1400
+- comments: 1200
+
+Use custom counts:
+
+```bash
+php seed_large_data.php --users=150 --tasks=2000 --approvals=600 --resources=300 --notifications=3000 --activities=4000 --comments=3500
+```
+
+If you want to clear existing data first (dangerous, for local dev only):
+
+```bash
+php seed_large_data.php --truncate=1
+```
+
 ## Default Credentials
 
-- **Email**: admin@example.com
+- **Email**: admin@flowstone.com
 - **Password**: password123
 
 ## Database Schema

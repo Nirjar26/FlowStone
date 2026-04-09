@@ -1,0 +1,329 @@
+classDiagram
+  direction LR
+
+  class App {
+    +routes: Route[]
+    +loadTheme()
+  }
+  class AppLayout {
+    +title: string
+    +subtitle: string
+    +sidebarCollapsed: boolean
+  }
+  class Sidebar
+  class TopBar
+
+  class DashboardPage {
+    +fetchDashboardData()
+  }
+  class TasksPage {
+    +fetchTasks()
+    +handleTaskUpdate()
+    +handleTaskDelete()
+  }
+  class ApprovalsPage {
+    +fetchApprovals()
+    +handleApprove()
+    +handleReject()
+  }
+  class ResourcesPage {
+    +fetchResources()
+    +createResource()
+  }
+  class ReportsPage {
+    +fetchReportsData()
+    +handleExportReport()
+  }
+  class NotificationsPage {
+    +fetchNotifications()
+    +markAsRead()
+    +markAllAsRead()
+    +deleteNotification()
+  }
+  class SettingsPage {
+    +fetchSettings()
+    +handleSaveProfile()
+    +handleAvatarUpload()
+  }
+  class ProfilePage {
+    +fetchProfile()
+    +handleSave()
+  }
+  class AdminPanel {
+    +fetchAll()
+    +stats
+  }
+
+  class DashboardData {
+    +kpis
+    +charts
+    +topPerformers
+    +activities
+  }
+  class TaskDTO {
+    +id: number
+    +title: string
+    +status: string
+    +priority: string
+    +assignee
+    +deadline: string
+  }
+  class ApprovalDTO {
+    +id: number
+    +type: string
+    +status: string
+    +requestedBy
+  }
+  class ResourceDTO {
+    +id: number
+    +name: string
+    +type: string
+    +status: string
+    +assignedTo
+  }
+  class ReportData {
+    +kpis
+    +monthlyTasks
+    +userPerformance
+    +resourceUtilization
+  }
+  class NotificationDTO {
+    +id: number
+    +type: string
+    +title: string
+    +message: string
+    +read: boolean
+  }
+  class UserProfile {
+    +id: number
+    +email: string
+    +name: string
+    +department: string
+  }
+  class UserSettings {
+    +id: number
+    +name: string
+    +email: string
+    +avatar
+  }
+  class Preferences {
+    +theme: string
+    +emailNotifications: boolean
+    +taskReminders: boolean
+  }
+
+  class AuthAPI {
+    +login()
+    +register()
+  }
+  class DashboardAPI {
+    +getDashboardData()
+  }
+  class TasksAPI {
+    +getTasks()
+  }
+  class TaskDetailAPI {
+    +getTaskDetail()
+  }
+  class CreateTaskAPI {
+    +createTask()
+  }
+  class UpdateTaskAPI {
+    +updateTask()
+  }
+  class DeleteTaskAPI {
+    +deleteTask()
+  }
+  class ApprovalsAPI {
+    +getApprovals()
+    +updateApprovalStatus()
+  }
+  class ResourcesAPI {
+    +getResources()
+    +createResource()
+    +updateResource()
+  }
+  class ReportsAPI {
+    +getReports()
+  }
+  class NotificationsAPI {
+    +getNotifications()
+    +markRead()
+    +markAllRead()
+    +deleteNotification()
+  }
+  class ProfileAPI {
+    +getProfile()
+    +updateProfile()
+  }
+  class SettingsAPI {
+    +getSettings()
+    +updateSettings()
+    +updatePassword()
+  }
+  class UsersAPI {
+    +getUsers()
+  }
+  class UploadAvatarAPI {
+    +uploadAvatar()
+  }
+
+  class User {
+    +id: int
+    +email: string
+    +password: string
+    +name: string
+    +role: string
+    +department: string
+    +phone: string
+    +bio: text
+    +avatar: string
+    +preferences: json
+    +created_at: timestamp
+  }
+  class Task {
+    +id: int
+    +title: string
+    +description: text
+    +status: enum
+    +priority: enum
+    +assignee_id: int
+    +created_by: int
+    +deadline: date
+    +created_at: timestamp
+    +updated_at: timestamp
+  }
+  class TaskComment {
+    +id: int
+    +task_id: int
+    +user_id: int
+    +content: text
+    +created_at: timestamp
+  }
+  class TaskAttachment {
+    +id: int
+    +task_id: int
+    +filename: string
+    +file_type: enum
+    +file_size: string
+    +file_path: string
+    +uploaded_by: int
+    +created_at: timestamp
+  }
+  class Approval {
+    +id: int
+    +type: string
+    +requested_by: int
+    +department: string
+    +description: text
+    +status: enum
+    +approved_by: int
+    +approved_at: timestamp
+  }
+  class Resource {
+    +id: int
+    +name: string
+    +type: enum
+    +status: enum
+    +assigned_to: int
+    +location: string
+    +description: text
+  }
+  class Notification {
+    +id: int
+    +user_id: int
+    +type: enum
+    +title: string
+    +message: text
+    +is_read: boolean
+    +created_at: timestamp
+  }
+  class Activity {
+    +id: int
+    +user_id: int
+    +type: enum
+    +description: text
+    +related_id: int
+    +related_type: string
+    +created_at: timestamp
+  }
+
+  App *-- AppLayout
+  App o-- DashboardPage
+  App o-- TasksPage
+  App o-- ApprovalsPage
+  App o-- ResourcesPage
+  App o-- ReportsPage
+  App o-- NotificationsPage
+  App o-- SettingsPage
+  App o-- ProfilePage
+  App o-- AdminPanel
+
+  AppLayout *-- Sidebar
+  AppLayout *-- TopBar
+
+  DashboardPage ..> DashboardData
+  TasksPage ..> TaskDTO
+  ApprovalsPage ..> ApprovalDTO
+  ResourcesPage ..> ResourceDTO
+  ReportsPage ..> ReportData
+  NotificationsPage ..> NotificationDTO
+  ProfilePage ..> UserProfile
+  SettingsPage ..> UserSettings
+  SettingsPage ..> Preferences
+  AdminPanel ..> TaskDTO
+  AdminPanel ..> ApprovalDTO
+  AdminPanel ..> ResourceDTO
+
+  DashboardPage ..> DashboardAPI
+  TasksPage ..> TasksAPI
+  TasksPage ..> TaskDetailAPI
+  TasksPage ..> CreateTaskAPI
+  TasksPage ..> UpdateTaskAPI
+  TasksPage ..> DeleteTaskAPI
+  ApprovalsPage ..> ApprovalsAPI
+  ResourcesPage ..> ResourcesAPI
+  ReportsPage ..> ReportsAPI
+  NotificationsPage ..> NotificationsAPI
+  ProfilePage ..> ProfileAPI
+  SettingsPage ..> SettingsAPI
+  SettingsPage ..> UploadAvatarAPI
+  AdminPanel ..> UsersAPI
+  AdminPanel ..> TasksAPI
+  AdminPanel ..> ApprovalsAPI
+  AdminPanel ..> ResourcesAPI
+  AdminPanel ..> NotificationsAPI
+
+  AuthAPI ..> User
+  DashboardAPI ..> Task
+  DashboardAPI ..> Resource
+  DashboardAPI ..> Activity
+  TasksAPI ..> Task
+  TaskDetailAPI ..> Task
+  TaskDetailAPI ..> TaskComment
+  TaskDetailAPI ..> TaskAttachment
+  CreateTaskAPI ..> Task
+  UpdateTaskAPI ..> Task
+  DeleteTaskAPI ..> Task
+  ApprovalsAPI ..> Approval
+  ResourcesAPI ..> Resource
+  ReportsAPI ..> Task
+  ReportsAPI ..> Resource
+  ReportsAPI ..> User
+  NotificationsAPI ..> Notification
+  ProfileAPI ..> User
+  SettingsAPI ..> User
+  UploadAvatarAPI ..> User
+  UsersAPI ..> User
+
+  User "1" <-- "0..*" Task : created_by
+  User "1" <-- "0..*" Task : assignee_id
+  Task "1" <-- "0..*" TaskComment : task_id
+  User "1" <-- "0..*" TaskComment : user_id
+  Task "1" <-- "0..*" TaskAttachment : task_id
+  User "1" <-- "0..*" TaskAttachment : uploaded_by
+  User "1" <-- "0..*" Approval : requested_by
+  User "1" <-- "0..*" Approval : approved_by
+  User "1" <-- "0..*" Resource : assigned_to
+  User "1" <-- "0..*" Notification : user_id
+  User "1" <-- "0..*" Activity : user_id

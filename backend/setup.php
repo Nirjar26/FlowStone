@@ -37,7 +37,7 @@ try {
     $stmt = $pdo->prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?) 
                            ON DUPLICATE KEY UPDATE password = ?, name = ?");
     $stmt->execute([
-        'admin@example.com',
+        'admin@flowstone.com',
         $hashedPassword,
         'Admin User',
         $hashedPassword,
@@ -46,12 +46,12 @@ try {
     
     echo "✓ Sample user inserted/updated\n";
     echo "\nLogin credentials:\n";
-    echo "Email: admin@example.com\n";
+    echo "Email: admin@flowstone.com\n";
     echo "Password: password123\n";
     
     // Verify the user
     $stmt = $pdo->prepare("SELECT id, email, name FROM users WHERE email = ?");
-    $stmt->execute(['admin@example.com']);
+    $stmt->execute(['admin@flowstone.com']);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($user) {

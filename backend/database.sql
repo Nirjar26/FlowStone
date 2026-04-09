@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Insert a sample user (password: password123)
 INSERT INTO users (email, password, name) VALUES 
-('admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User')
+('admin@flowstone.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User')
 ON DUPLICATE KEY UPDATE email=email;

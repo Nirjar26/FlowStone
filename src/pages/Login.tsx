@@ -213,13 +213,13 @@ export default function Login() {
 
             {/* Divider */}
             <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
+              {/* <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
-              </div>
+              </div> */}
               <div className="relative flex justify-center">
-                <span className="px-3 text-xs text-muted-foreground bg-card">
+                {/* <span className="px-3 text-xs text-muted-foreground bg-card">
                   or continue with
-                </span>
+                </span> */}
               </div>
             </div>
 

@@ -47,14 +47,14 @@ try {
         'Administrator',
         'Management',
         'Experienced system administrator with over 10 years in resource management and workflow optimization.',
-        'admin@example.com'
+        'admin@flowstone.com'
     ]);
     
     echo "\n✓ Updated user profile data\n";
     
     // Verify the update
     $stmt = $pdo->prepare("SELECT id, email, name, phone, role, department FROM users WHERE email = ?");
-    $stmt->execute(['admin@example.com']);
+    $stmt->execute(['admin@flowstone.com']);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($user) {

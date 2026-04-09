@@ -46,7 +46,7 @@ export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        className="card-elevated p-6"
+        className="card-elevated p-6 h-full"
       >
         <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
         <div className="text-center py-8 text-muted-foreground">
@@ -62,13 +62,13 @@ export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.3 }}
-      className="card-elevated p-6"
+      className="card-elevated p-6 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1 flex-1 overflow-y-auto">
         {activities.map((activity, index) => {
           const Icon = getIcon(activity.type);
           return (

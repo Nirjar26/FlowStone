@@ -50,41 +50,48 @@ try {
     $avgCompletionTime = round($avgCompletionTime ?? 2.4, 1);
     
     // Monthly Tasks Data (last 12 months)
-    $stmt = $pdo->query("
+    $createdStmt = $pdo->query("
         SELECT 
-            DATE_FORMAT(created_at, '%b') as month,
-            MONTH(created_at) as month_num,
-            YEAR(created_at) as year,
-            COUNT(*) as created,
-            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+            DATE_FORMAT(created_at, '%Y-%m') as ym,
+            COUNT(*) as total
         FROM tasks 
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY month, month_num, year
-        ORDER BY year, month_num
+        WHERE created_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 11 MONTH)
+        GROUP BY ym
     ");
-    $monthlyData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Format monthly tasks
+    $createdRows = $createdStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $completedStmt = $pdo->query("
+        SELECT 
+            DATE_FORMAT(updated_at, '%Y-%m') as ym,
+            COUNT(*) as total
+        FROM tasks 
+        WHERE status = 'completed'
+          AND updated_at >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 11 MONTH)
+        GROUP BY ym
+    ");
+    $completedRows = $completedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $createdByMonth = [];
+    foreach ($createdRows as $row) {
+        $createdByMonth[$row['ym']] = (int) $row['total'];
+    }
+
+    $completedByMonth = [];
+    foreach ($completedRows as $row) {
+        $completedByMonth[$row['ym']] = (int) $row['total'];
+    }
+
+    // Build a complete 12-month series so charts always render consistently.
     $monthlyTasks = [];
-    $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    if (count($monthlyData) > 0) {
-        foreach ($monthlyData as $data) {
-            $monthlyTasks[] = [
-                'name' => $data['month'],
-                'created' => (int)$data['created'],
-                'completed' => (int)$data['completed']
-            ];
-        }
-    } else {
-        // Generate sample data if no data exists
-        foreach ($months as $month) {
-            $monthlyTasks[] = [
-                'name' => $month,
-                'created' => rand(50, 120),
-                'completed' => rand(40, 110)
-            ];
-        }
+    $startMonth = new DateTimeImmutable('first day of this month');
+    for ($i = 11; $i >= 0; $i--) {
+        $monthDate = $startMonth->modify("-{$i} months");
+        $ym = $monthDate->format('Y-m');
+        $monthlyTasks[] = [
+            'name' => $monthDate->format('M'),
+            'created' => $createdByMonth[$ym] ?? 0,
+            'completed' => $completedByMonth[$ym] ?? 0,
+        ];
     }
     
     // User Performance (top 5 performers by completed tasks)

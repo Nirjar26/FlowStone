@@ -1,0 +1,106 @@
+classDiagram
+  direction TB
+
+  class CoreAppLayout {
+    +App (routing, theme)
+    +Layout (Sidebar, Topbar)
+  }
+
+  class AuthenticationModule {
+    +Login / Register
+    +Session management
+  }
+
+  class DashboardModule {
+    +KPIs
+    +Charts
+    +Activity feed
+    +System overview
+  }
+
+  class TaskManagementModule {
+    +Create / Update / Delete tasks
+    +Task detail view
+    +Comments
+    +Attachments
+  }
+
+  class ApprovalSystem {
+    +Approval requests
+    +Approve workflow
+    +Reject workflow
+  }
+
+  class ResourceManagement {
+    +Manage resources
+    +Assign resources to users
+  }
+
+  class ReportsAnalytics {
+    +Report generation
+    +Performance metrics
+    +Utilization metrics
+    +Export functionality
+  }
+
+  class NotificationsSystem {
+    +Notification listing
+    +Mark as read
+    +Delete notification
+  }
+
+  class UserProfileSettings {
+    +Profile management
+    +Theme preference
+    +Notification preferences
+    +Avatar upload
+  }
+
+  class AdminPanel {
+    +User management
+    +System-wide stats
+    +Control tasks/approvals/resources
+  }
+
+  class BackendAPILayer {
+    +Auth API
+    +Task API
+    +Approval API
+    +Resource API
+    +Reports API
+    +Notifications API
+    +Profile & Settings API
+  }
+
+  class DatabaseLayer {
+    +Users
+    +Tasks
+    +Approvals
+    +Resources
+    +Notifications
+    +Activities
+    +Comments
+    +Attachments
+  }
+
+  CoreAppLayout ..> AuthenticationModule
+  CoreAppLayout ..> DashboardModule
+  CoreAppLayout ..> TaskManagementModule
+  CoreAppLayout ..> ApprovalSystem
+  CoreAppLayout ..> ResourceManagement
+  CoreAppLayout ..> ReportsAnalytics
+  CoreAppLayout ..> NotificationsSystem
+  CoreAppLayout ..> UserProfileSettings
+  CoreAppLayout ..> AdminPanel
+
+  AuthenticationModule ..> BackendAPILayer
+  DashboardModule ..> BackendAPILayer
+  TaskManagementModule ..> BackendAPILayer
+  ApprovalSystem ..> BackendAPILayer
+  ResourceManagement ..> BackendAPILayer
+  ReportsAnalytics ..> BackendAPILayer
+  NotificationsSystem ..> BackendAPILayer
+  UserProfileSettings ..> BackendAPILayer
+  AdminPanel ..> BackendAPILayer
+
+  BackendAPILayer ..> DatabaseLayer

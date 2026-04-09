@@ -25,13 +25,25 @@ const navItems = [
 ];
 
 interface SidebarProps {
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (value: boolean) => void;
 }
 
-export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
+export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
+
+  const collapsedState = collapsed ?? internalCollapsed;
+  const setCollapsedState = (value: boolean) => {
+    if (collapsed !== undefined) {
+      onCollapsedChange?.(value);
+    } else {
+      setInternalCollapsed(value);
+    }
+  };
+
+  const toggleCollapsed = () => setCollapsedState(!collapsedState);
 
   useEffect(() => {
     const loadRole = async () => {
@@ -77,7 +89,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 80 : 260 }}
+      animate={{ width: collapsedState ? 80 : 260 }}
       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className="fixed left-0 top-0 h-screen bg-sidebar z-50 flex flex-col border-r border-sidebar-border"
     >
@@ -168,17 +180,17 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       {/* Bottom Section */}
       <div className="p-3 border-t border-sidebar-border">
         <button
-          onClick={onToggleCollapsed}
+          onClick={toggleCollapsed}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
         >
           <motion.div
-            animate={{ rotate: collapsed ? 180 : 0 }}
+            animate={{ rotate: collapsedState ? 180 : 0 }}
             transition={{ duration: 0.3 }}
           >
             <ChevronLeft className="w-5 h-5" />
           </motion.div>
           <AnimatePresence mode="wait">
-            {!collapsed && (
+            {!collapsedState && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -193,8 +205,4 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
     </motion.aside>
   );
-}
-
-export function useSidebarWidth() {
-  return 260;
 }

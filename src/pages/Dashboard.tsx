@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
@@ -15,7 +16,10 @@ interface DashboardData {
   charts: {
     tasksThisWeek: Array<{ name: string; value: number }>;
     resourceUtilization: Array<{ name: string; value: number }>;
+    monthlyCompletion: Array<{ name: string; value: number }>;
+    resourceByCategory: Array<{ category: string; available: number; assigned: number; maintenance: number }>;
   };
+  topPerformers: Array<{ name: string; completedTasks: number; avatar: string | null }>;
   activities: Array<{
     id: number;
     type: string;
@@ -26,6 +30,7 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState("User");
@@ -134,33 +139,42 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="card-elevated p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
+          <div className="card-elevated p-7">
+            <h2 className="text-sm font-semibold text-foreground mb-5">Quick Actions</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: "New Task", icon: "📝" },
-                { label: "Book Resource", icon: "📦" },
-                { label: "Submit Request", icon: "📋" },
-                { label: "View Reports", icon: "📊" },
-              ].map((action, index) => (
+                { label: "New Task", icon: "📝", onClick: () => navigate("/tasks/create") },
+                { label: "Book Resource", icon: "📦", onClick: () => navigate("/resources") },
+                { label: "Submit Request", icon: "📋", onClick: () => navigate("/approvals") },
+                { label: "View Reports", icon: "📊", onClick: () => navigate("/reports") },
+              ].map((action) => (
                 <button
                   key={action.label}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 group"
+                  onClick={action.onClick}
+                  className="flex flex-col items-center gap-2 p-5 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 group cursor-pointer"
                 >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">
+                  <span className="text-3xl group-hover:scale-110 transition-transform">
                     {action.icon}
                   </span>
-                  <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground">
+                  <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
                     {action.label}
                   </span>
                 </button>
               ))}
             </div>
           </div>
+            {/* Monthly Completion Chart */}
+            <MiniChart
+              title="Task Completion Trend"
+              data={data.charts.monthlyCompletion}
+              type="line"
+              color="success"
+              delay={0.6}
+            />
         </div>
 
         {/* Activity Feed */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 lg:row-span-2 flex flex-col">
           <ActivityFeed activities={data.activities} />
         </div>
       </div>

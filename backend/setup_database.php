@@ -8,63 +8,21 @@ echo "<h1>FlowStone Database Setup</h1>";
 echo "<pre>";
 
 try {
-    // Read the SQL file
     $sqlFile = __DIR__ . '/full_schema.sql';
     
     if (!file_exists($sqlFile)) {
         throw new Exception("SQL file not found: $sqlFile");
     }
     
-    $sql = file_get_contents($sqlFile);
-    
-    // Split SQL commands (basic splitting by semicolons)
-    $commands = array_filter(
-        array_map('trim', explode(';', $sql)),
-        function($cmd) {
-            return !empty($cmd) && strpos($cmd, '--') !== 0;
-        }
-    );
-    
-    echo "Found " . count($commands) . " SQL commands to execute.\n\n";
+    echo "Found schema file: full_schema.sql\n\n";
     
     $successCount = 0;
     $errorCount = 0;
     
-    foreach ($commands as $index => $command) {
-        if (empty(trim($command))) continue;
-        
-        try {
-            $pdo->exec($command);
-            $successCount++;
-            
-            // Show progress for important operations
-            if (stripos($command, 'CREATE TABLE') !== false) {
-                preg_match('/CREATE TABLE.*?`?(\w+)`?/i', $command, $matches);
-                $tableName = $matches[1] ?? 'unknown';
-                echo "✓ Created table: $tableName\n";
-            } elseif (stripos($command, 'DELETE FROM') !== false) {
-                preg_match('/DELETE FROM `?(\w+)`?/i', $command, $matches);
-                $tableName = $matches[1] ?? 'unknown';
-                echo "✓ Cleared table: $tableName\n";
-            } elseif (stripos($command, 'INSERT INTO') !== false) {
-                preg_match('/INSERT INTO `?(\w+)`?/i', $command, $matches);
-                $tableName = $matches[1] ?? 'unknown';
-                echo "✓ Inserted data into: $tableName\n";
-            } elseif (stripos($command, 'ALTER TABLE') !== false) {
-                preg_match('/ALTER TABLE `?(\w+)`?/i', $command, $matches);
-                $tableName = $matches[1] ?? 'unknown';
-                echo "✓ Altered table: $tableName\n";
-            }
-        } catch (PDOException $e) {
-            $errorCount++;
-            // Only show errors that are not "table already exists" or "duplicate entry"
-            if (strpos($e->getMessage(), 'already exists') === false && 
-                strpos($e->getMessage(), 'Duplicate entry') === false) {
-                echo "✗ Error: " . $e->getMessage() . "\n";
-            }
-        }
-    }
+    flowstone_execute_sql_file($pdo, $sqlFile);
     
+    $successCount = 1;
+        
     echo "\n";
     echo "========================================\n";
     echo "Database Setup Complete!\n";

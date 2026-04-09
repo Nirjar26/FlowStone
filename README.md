@@ -1,119 +1,73 @@
-<div align="center">
-  <h1>FlowStone</h1>
-  <p>Enterprise-grade team operations platform for managing tasks, approvals, resources, and workflows with a modern React frontend and PHP backend.</p>
-</div>
+# Welcome to your Lovable project
 
-## Problem Statement
+## Project info
 
-FlowStone brings together task management, approval workflows, and resource planning into a single team operations platform. It solves the gap between scattered work tools and poor visibility by giving teams one place to manage work, approvals, and reporting.
+**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## Features
+## How can I edit this code?
 
-### Authentication & Access Control
-- **Secure login:** Email/password authentication with session management for protected access.
-- **Role-based access:** Admin and user roles determine dashboard visibility, task control, and approval permissions.
-- **Profile management:** Edit user details, department, bio, and avatar for a personalized workspace.
+There are several ways of editing your application.
 
-### Task & Workflow Management
-- **Task lifecycle tracking:** Create, assign, update, and delete tasks across pending, in-progress, review, and completed states.
-- **Approval pipelines:** Route task requests through approval workflows with clear pending, approved, and rejected states.
-- **Priority and deadlines:** Prioritize work and enforce deadlines for better delivery coordination.
+**Use Lovable**
 
-### Resource & Reporting
-- **Resource tracking:** Monitor team resources, availability, and workload through resource cards.
-- **Analytics dashboards:** Visualize task trends, approval volume, and resource summaries with charts.
-- **Notifications:** Stay informed with real-time alerts for tasks, approvals, and team activity.
+Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
 
-## Architecture / Flow
+Changes made via Lovable will be committed automatically to this repo.
 
-<p align="center">
-  <img src="./diagram/Architecture.png" alt="FlowStone Architecture" width="720" height="520" style="max-width:100%; object-fit:contain;" />
-</p>
+**Use your preferred IDE**
 
-## Tech Stack
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-**Frontend:** React, Vite, Tailwind CSS  
-**Backend:** PHP, REST APIs  
-**Database:** MySQL  
-**UI / UX:** Radix, Framer Motion, Recharts
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-## How It Works
+Follow these steps:
 
-1. Users sign in through the React frontend and authenticate with the PHP backend.
-2. The backend serves user profiles, task data, approval workflows, and resource summaries.
-3. Users manage tasks and approvals; the frontend reflects updates through API calls.
-4. Backend APIs process task creation, updates, and approval actions.
-5. Dashboard analytics aggregate work, approvals, and notifications for team oversight.
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
 
-## Installation / Setup
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
 
-```bash
-git clone https://github.com/Nirjar26/FlowStone.git
-cd FlowStone-1
-npm install
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-## Environment Variables
+**Edit a file directly in GitHub**
 
-```env
-DB_HOST=
-DB_NAME=
-DB_USER=
-DB_PASS=
-```
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-## API Endpoints
+**Use GitHub Codespaces**
 
-- `POST /login.php`
-- `POST /register.php`
-- `GET /profile.php?id={user_id}`
-- `POST /update_profile.php`
-- `GET /tasks.php`
-- `GET /task_detail.php?id={task_id}`
-- `POST /create_task.php`
-- `POST /update_task.php`
-- `POST /delete_task.php`
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## Folder Structure
+## What technologies are used for this project?
 
-```text
-.
-├── backend/
-│   ├── approvals.php
-│   ├── create_task.php
-│   ├── dashboard.php
-│   ├── login.php
-│   ├── profile.php
-│   ├── register.php
-│   ├── tasks.php
-│   ├── update_task.php
-│   ├── setup.php
-│   ├── update_schema.php
-│   ├── setup_tasks.php
-│   └── uploads/
-├── diagram/
-│   └── Architecture.png
-├── public/
-│   └── robots.txt
-├── src/
-│   ├── admin/
-│   ├── components/
-│   ├── hooks/
-│   ├── lib/
-│   ├── pages/
-│   └── App.tsx
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
-```
+This project is built with:
 
-## License
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-MIT License
+## How can I deploy this project?
 
-## Author / Contact
+Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
-Nirjar Goswami  
-GitHub: https://github.com/Nirjar26
+## Can I connect a custom domain to my Lovable project?
+
+Yes, you can!
+
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
