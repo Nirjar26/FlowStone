@@ -27,9 +27,18 @@ const navItems = [
 interface SidebarProps {
   collapsed?: boolean;
   onCollapsedChange?: (value: boolean) => void;
+  isMobile?: boolean;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
+export function Sidebar({
+  collapsed,
+  onCollapsedChange,
+  isMobile = false,
+  isMobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
@@ -87,14 +96,27 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
   }, [isAdmin]);
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsedState ? 80 : 260 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="fixed left-0 top-0 h-screen bg-sidebar z-50 flex flex-col border-r border-sidebar-border"
-    >
-      {/* Logo Section */}
-      <div className="flex items-center justify-between px-5 py-6 border-b border-sidebar-border">
+    <>
+      {isMobile && isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={onMobileClose}
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+        />
+      )}
+
+      <motion.aside
+        initial={false}
+        animate={{
+          width: collapsedState ? 80 : 260,
+          x: isMobile ? (isMobileOpen ? 0 : "-100%") : 0,
+        }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="fixed left-0 top-0 h-screen bg-sidebar z-50 flex flex-col border-r border-sidebar-border md:translate-x-0"
+      >
+        {/* Logo Section */}
+        <div className="flex items-center justify-between px-5 py-6 border-b border-sidebar-border">
         <AnimatePresence mode="wait">
           {!collapsed && (
             <motion.div
@@ -123,16 +145,17 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
             <span className="text-sidebar-primary-foreground font-bold text-sm">SR</span>
           </div>
         )}
-      </div>
+        </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto scrollbar-thin">
+        {/* Navigation */}
+        <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto scrollbar-thin">
         {visibleNavItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => onMobileClose?.()}
               className="block"
             >
               <motion.div
@@ -175,10 +198,10 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
             </NavLink>
           );
         })}
-      </nav>
+        </nav>
 
-      {/* Bottom Section */}
-      <div className="p-3 border-t border-sidebar-border">
+        {/* Bottom Section */}
+        <div className="p-3 border-t border-sidebar-border hidden md:block">
         <button
           onClick={toggleCollapsed}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
@@ -202,7 +225,8 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
             )}
           </AnimatePresence>
         </button>
-      </div>
-    </motion.aside>
+        </div>
+      </motion.aside>
+    </>
   );
 }

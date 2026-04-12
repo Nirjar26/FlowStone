@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Search, ChevronDown, Moon, Sun, LogOut, User, Settings, Clock } from "lucide-react";
+import { Bell, Search, ChevronDown, Moon, Sun, LogOut, User, Settings, Clock, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   title: string;
   subtitle?: string;
+  onMenuClick?: () => void;
 }
 
 interface Notification {
@@ -18,7 +19,7 @@ interface Notification {
   read: boolean;
 }
 
-export function TopBar({ title, subtitle }: TopBarProps) {
+export function TopBar({ title, subtitle, onMenuClick }: TopBarProps) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -154,13 +155,25 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   };
 
   return (
-    <header className="h-[72px] bg-card/80 backdrop-blur-xl border-b border-border/50 px-8 flex items-center justify-between sticky top-0 z-40">
+    <header className="min-h-[72px] bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 sticky top-0 z-40">
       {/* Left Section - Title */}
-      <div>
+      <div className="min-w-0 flex items-center gap-3">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="md:hidden w-10 h-10 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        <div className="min-w-0">
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xl font-semibold text-foreground tracking-tight"
+          className="text-base sm:text-lg lg:text-xl font-semibold text-foreground tracking-tight truncate"
         >
           {title}
         </motion.h1>
@@ -169,15 +182,16 @@ export function TopBar({ title, subtitle }: TopBarProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-sm text-muted-foreground mt-0.5"
+            className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-1"
           >
             {subtitle}
           </motion.p>
         )}
+        </div>
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Search */}
         <motion.div
           animate={{ width: searchFocused ? 280 : 200 }}
@@ -254,7 +268,7 @@ export function TopBar({ title, subtitle }: TopBarProps) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="absolute right-0 top-full mt-2 w-80 bg-card rounded-2xl border border-border shadow-soft-xl overflow-hidden"
+                className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] bg-card rounded-2xl border border-border shadow-soft-xl overflow-hidden"
               >
                 <div className="px-4 py-3 border-b border-border">
                   <h3 className="font-semibold text-foreground">Notifications</h3>
@@ -342,7 +356,7 @@ export function TopBar({ title, subtitle }: TopBarProps) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="absolute right-0 top-full mt-2 w-56 bg-card rounded-2xl border border-border shadow-soft-xl overflow-hidden"
+                className="absolute right-0 top-full mt-2 w-[min(14rem,calc(100vw-2rem))] bg-card rounded-2xl border border-border shadow-soft-xl overflow-hidden"
               >
                 <div className="p-2">
                   <button 

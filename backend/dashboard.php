@@ -7,37 +7,69 @@ if ($user_id <= 0) {
     $user_id = 1;
 }
 
+$requestUser = flowstone_fetch_user($pdo, $user_id);
+$isAdmin = flowstone_is_admin_role($requestUser['role'] ?? null);
+
+$taskScopeClause = '';
+$taskScopeParams = [];
+if (!$isAdmin && $user_id > 0) {
+    $taskScopeClause = ' AND (t.created_by = :scope_user_id OR t.assignee_id = :scope_user_id)';
+    $taskScopeParams['scope_user_id'] = $user_id;
+}
+
 // Get dashboard statistics
 try {
     // KPI: Total Tasks
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM tasks");
-    $totalTasks = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM tasks t WHERE 1=1" . $taskScopeClause);
+    $stmt->execute($taskScopeParams);
+    $totalTasks = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
     // Previous month tasks for comparison
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM tasks WHERE created_at >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND created_at < DATE_SUB(NOW(), INTERVAL 1 MONTH)");
-    $prevMonthTasks = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM tasks t WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND t.created_at < DATE_SUB(NOW(), INTERVAL 1 MONTH)" . $taskScopeClause);
+    $stmt->execute($taskScopeParams);
+    $prevMonthTasks = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $taskChange = $prevMonthTasks > 0 ? round((($totalTasks - $prevMonthTasks) / $prevMonthTasks) * 100) : 12;
 
     // KPI: Pending Approvals
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending'");
-    $pendingApprovals = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    if ($isAdmin) {
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending'");
+        $pendingApprovals = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    } else {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending' AND requested_by = ?");
+        $stmt->execute([$user_id]);
+        $pendingApprovals = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    }
 
     // Previous week approvals
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending' AND created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK) AND created_at < DATE_SUB(NOW(), INTERVAL 1 WEEK)");
-    $prevWeekApprovals = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    if ($isAdmin) {
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending' AND created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK) AND created_at < DATE_SUB(NOW(), INTERVAL 1 WEEK)");
+        $prevWeekApprovals = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    } else {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM approvals WHERE status = 'pending' AND requested_by = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK) AND created_at < DATE_SUB(NOW(), INTERVAL 1 WEEK)");
+        $stmt->execute([$user_id]);
+        $prevWeekApprovals = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    }
     $approvalChange = $prevWeekApprovals > 0 ? round((($pendingApprovals - $prevWeekApprovals) / $prevWeekApprovals) * 100) : -5;
 
     // KPI: Resources in Use
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM resources WHERE status = 'assigned'");
-    $resourcesInUse = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    if ($isAdmin) {
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM resources WHERE status = 'assigned'");
+        $resourcesInUse = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    } else {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM resources WHERE status = 'assigned' AND assigned_to = ?");
+        $stmt->execute([$user_id]);
+        $resourcesInUse = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    }
 
     // KPI: Completed Tasks
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM tasks WHERE status = 'completed'");
-    $completedTasks = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM tasks t WHERE t.status = 'completed'" . $taskScopeClause);
+    $stmt->execute($taskScopeParams);
+    $completedTasks = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
     // This month completed
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM tasks WHERE status = 'completed' AND updated_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)");
-    $thisMonthCompleted = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM tasks t WHERE t.status = 'completed' AND t.updated_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)" . $taskScopeClause);
+    $stmt->execute($taskScopeParams);
+    $thisMonthCompleted = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
     // ===== TASKS THIS WEEK (Mon-Sun) =====
     $taskChartData = [];

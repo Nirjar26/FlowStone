@@ -7,12 +7,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 // Get filters from query parameters
+$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
 $status = isset($_GET['status']) ? $_GET['status'] : null;
 $priority = isset($_GET['priority']) ? $_GET['priority'] : null;
 $assignee_id = isset($_GET['assignee_id']) ? intval($_GET['assignee_id']) : null;
 $search = isset($_GET['search']) ? trim($_GET['search']) : null;
 $created_date = isset($_GET['created_date']) ? trim($_GET['created_date']) : null;
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+
+$requestUser = $user_id > 0 ? flowstone_fetch_user($pdo, $user_id) : null;
+$isAdmin = flowstone_is_admin_role($requestUser['role'] ?? null);
 
 try {
     // Build query
@@ -40,6 +44,12 @@ try {
     ";
     
     $params = [];
+
+    if (!$isAdmin && $user_id > 0) {
+        $sql .= " AND (t.assignee_id = ? OR t.created_by = ?)";
+        $params[] = $user_id;
+        $params[] = $user_id;
+    }
     
     // Add filters
     if ($status && in_array($status, ['pending', 'in-progress', 'review', 'completed'])) {
@@ -91,6 +101,26 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $countsSql = "
+        SELECT 
+            COUNT(*) AS all_count,
+            SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+            SUM(CASE WHEN t.status = 'in-progress' THEN 1 ELSE 0 END) AS in_progress_count,
+            SUM(CASE WHEN t.status = 'review' THEN 1 ELSE 0 END) AS review_count,
+            SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_count
+        FROM tasks t
+        WHERE 1=1
+    ";
+    $countParams = [];
+    if (!$isAdmin && $user_id > 0) {
+        $countsSql .= " AND (t.assignee_id = ? OR t.created_by = ?)";
+        $countParams[] = $user_id;
+        $countParams[] = $user_id;
+    }
+    $countStmt = $pdo->prepare($countsSql);
+    $countStmt->execute($countParams);
+    $countRow = $countStmt->fetch(PDO::FETCH_ASSOC) ?: [];
     
     // Format tasks
     $formattedTasks = array_map(function($task) {
@@ -120,7 +150,14 @@ try {
     echo json_encode([
         'success' => true,
         'tasks' => $formattedTasks,
-        'total' => count($formattedTasks)
+        'total' => count($formattedTasks),
+        'statusCounts' => [
+            'all' => (int)($countRow['all_count'] ?? 0),
+            'pending' => (int)($countRow['pending_count'] ?? 0),
+            'in-progress' => (int)($countRow['in_progress_count'] ?? 0),
+            'review' => (int)($countRow['review_count'] ?? 0),
+            'completed' => (int)($countRow['completed_count'] ?? 0),
+        ]
     ]);
     
 } catch (PDOException $e) {

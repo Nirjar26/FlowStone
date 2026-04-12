@@ -60,6 +60,47 @@ function resources_fetch_resource(PDO $pdo, int $resourceId): ?array
     return $resource ?: null;
 }
 
+function resources_extract_resource_id_from_payload(string $description): int
+{
+    $payload = resources_decode_description($description);
+    return (int)($payload['resourceId'] ?? 0);
+}
+
+function resources_has_pending_request_for_resource(PDO $pdo, int $resourceId): bool
+{
+    $stmt = $pdo->prepare("SELECT description FROM approvals WHERE type = 'Resource Request' AND status = 'pending' ORDER BY created_at DESC");
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($rows as $row) {
+        if (resources_extract_resource_id_from_payload((string)$row['description']) === $resourceId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function resources_reject_pending_requests_for_resource(PDO $pdo, int $resourceId, int $reviewedBy): void
+{
+    $stmt = $pdo->prepare("SELECT id, description FROM approvals WHERE type = 'Resource Request' AND status = 'pending' ORDER BY created_at DESC");
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $updateStmt = $pdo->prepare("UPDATE approvals SET status = 'rejected', approved_by = :approved_by, approved_at = NOW() WHERE id = :id");
+    foreach ($rows as $row) {
+        $rowResourceId = resources_extract_resource_id_from_payload((string)$row['description']);
+        if ($rowResourceId !== $resourceId) {
+            continue;
+        }
+
+        $updateStmt->execute([
+            ':approved_by' => $reviewedBy,
+            ':id' => (int)$row['id'],
+        ]);
+    }
+}
+
 try {
     $bodyData = [];
     if ($method !== 'GET') {
@@ -176,9 +217,8 @@ try {
         $type = $_GET['type'] ?? 'all';
         $status = $_GET['status'] ?? 'all';
         $search = $_GET['search'] ?? '';
-        
-        $sql = "
-            SELECT 
+
+        $stmt = $pdo->query("\n            SELECT 
                 r.id,
                 r.name,
                 r.type,
@@ -189,40 +229,119 @@ try {
                 u.name as assigned_to_name
             FROM resources r
             LEFT JOIN users u ON r.assigned_to = u.id
-            WHERE 1=1
-        ";
-        
-        $params = [];
-        
-        if ($type !== 'all') {
-            $sql .= " AND r.type = :type";
-            $params[':type'] = $type;
-        }
-        
-        if ($status !== 'all') {
-            $sql .= " AND r.status = :status";
-            $params[':status'] = $status;
-        }
-        
-        if (!empty($search)) {
-            $sql .= " AND r.name LIKE :search";
-            $params[':search'] = "%$search%";
-        }
-        
-        $sql .= " ORDER BY r.created_at DESC";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+            ORDER BY r.created_at DESC
+        ");
         $resources = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Format resources
-        $formattedResources = [];
+        $requestSql = "
+            SELECT id, status, description, requested_by, approved_by, approved_at, created_at
+            FROM approvals
+            WHERE type = 'Resource Request'
+            ORDER BY created_at DESC
+        ";
+        $requestStmt = $pdo->prepare($requestSql);
+        $requestStmt->execute();
+        $requestRows = $requestStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $latestRequestByResource = [];
+        $pendingRequestByResource = [];
+
+        foreach ($requestRows as $requestRow) {
+            $resourceIdFromRequest = resources_extract_resource_id_from_payload((string)$requestRow['description']);
+            if ($resourceIdFromRequest <= 0) {
+                continue;
+            }
+
+            if (!isset($latestRequestByResource[$resourceIdFromRequest])) {
+                $latestRequestByResource[$resourceIdFromRequest] = $requestRow;
+            }
+
+            if ($requestRow['status'] === 'pending' && !isset($pendingRequestByResource[$resourceIdFromRequest])) {
+                $pendingRequestByResource[$resourceIdFromRequest] = $requestRow;
+            }
+        }
+
+        $visibleResources = [];
+        $filterCounts = [
+            'types' => [
+                'all' => 0,
+                'device' => 0,
+                'software' => 0,
+                'room' => 0,
+                'equipment' => 0,
+            ],
+            'statuses' => [
+                'all' => 0,
+                'available' => 0,
+                'assigned' => 0,
+                'maintenance' => 0,
+                'requested' => 0,
+                'rejected' => 0,
+            ],
+        ];
+
+        // Format resources and apply visibility + derived statuses.
         foreach ($resources as $resource) {
-            $formattedResources[] = [
-                'id' => (int)$resource['id'],
+            $resourceId = (int)$resource['id'];
+            $baseStatus = (string)$resource['status'];
+            $derivedStatus = $baseStatus;
+            $requestId = null;
+            $requestedBy = null;
+            $requestedAt = null;
+
+            $pendingRequest = $pendingRequestByResource[$resourceId] ?? null;
+            $latestRequest = $latestRequestByResource[$resourceId] ?? null;
+
+            if ($pendingRequest) {
+                $derivedStatus = 'requested';
+                $requestId = (int)$pendingRequest['id'];
+                $requestedBy = flowstone_fetch_user($pdo, (int)$pendingRequest['requested_by']);
+                $requestedAt = $pendingRequest['created_at'];
+            } elseif ($isAdmin && $latestRequest && $latestRequest['status'] === 'rejected' && $baseStatus === 'available') {
+                $derivedStatus = 'rejected';
+                $requestId = (int)$latestRequest['id'];
+                $requestedBy = flowstone_fetch_user($pdo, (int)$latestRequest['requested_by']);
+                $requestedAt = $latestRequest['created_at'];
+            }
+
+            $visible = true;
+            if (!$isAdmin) {
+                $isOwnedAssignment = $baseStatus === 'assigned' && (int)($resource['assigned_to'] ?? 0) === $requestUserId;
+                $isPendingOwnRequest = $pendingRequest && (int)$pendingRequest['requested_by'] === $requestUserId;
+                $isRejectedOwnRequest = $latestRequest && $latestRequest['status'] === 'rejected' && (int)$latestRequest['requested_by'] === $requestUserId;
+
+                $visible = $isOwnedAssignment
+                    || $baseStatus === 'available'
+                    || $baseStatus === 'maintenance'
+                    || $isPendingOwnRequest
+                    || $isRejectedOwnRequest;
+
+                if ($isOwnedAssignment) {
+                    $derivedStatus = 'assigned';
+                } elseif ($isRejectedOwnRequest && $baseStatus === 'available') {
+                    $derivedStatus = 'rejected';
+                    $requestId = (int)$latestRequest['id'];
+                    $requestedBy = flowstone_fetch_user($pdo, (int)$latestRequest['requested_by']);
+                    $requestedAt = $latestRequest['created_at'];
+                }
+            }
+
+            if (!$visible) {
+                continue;
+            }
+
+            $viewResource = [
+                'id' => $resourceId,
                 'name' => $resource['name'],
                 'type' => $resource['type'],
-                'status' => $resource['status'],
+                'status' => $derivedStatus,
+                'requestId' => $requestId,
+                'requestedBy' => $requestedBy ? [
+                    'id' => (int)$requestedBy['id'],
+                    'name' => $requestedBy['name'],
+                    'department' => $requestedBy['department'] ?? null,
+                ] : null,
+                'requestedAt' => $requestedAt,
                 'location' => $resource['location'],
                 'description' => $resource['description'],
                 'assignedTo' => $resource['assigned_to_name'] ? [
@@ -230,7 +349,37 @@ try {
                     'name' => $resource['assigned_to_name'],
                 ] : null
             ];
+
+            $visibleResources[] = $viewResource;
+            $filterCounts['types']['all']++;
+            $filterCounts['statuses']['all']++;
+
+            $resourceType = (string)$viewResource['type'];
+            if (isset($filterCounts['types'][$resourceType])) {
+                $filterCounts['types'][$resourceType]++;
+            }
+
+            $resourceStatus = (string)$viewResource['status'];
+            if (isset($filterCounts['statuses'][$resourceStatus])) {
+                $filterCounts['statuses'][$resourceStatus]++;
+            }
         }
+
+        $formattedResources = array_values(array_filter($visibleResources, function (array $resource) use ($type, $status, $search): bool {
+            if ($type !== 'all' && $resource['type'] !== $type) {
+                return false;
+            }
+
+            if ($status !== 'all' && $resource['status'] !== $status) {
+                return false;
+            }
+
+            if ($search !== '' && stripos((string)$resource['name'], $search) === false) {
+                return false;
+            }
+
+            return true;
+        }));
 
         $userRows = [];
         if ($isAdmin) {
@@ -248,6 +397,7 @@ try {
                 'canReviewRequests' => $isAdmin,
                 'canCreateRequests' => true,
             ],
+            'filterCounts' => $filterCounts,
             'users' => $userRows,
         ]);
         
@@ -271,6 +421,17 @@ try {
                 $assignee = flowstone_fetch_user($pdo, $assignToId);
                 if (!$assignee) {
                     echo json_encode(['success' => false, 'message' => 'Assignee not found']);
+                    exit;
+                }
+
+                $resource = resources_fetch_resource($pdo, $resourceId);
+                if (!$resource) {
+                    echo json_encode(['success' => false, 'message' => 'Resource not found']);
+                    exit;
+                }
+
+                if (!in_array($resource['status'], ['available', 'assigned', 'maintenance'], true)) {
+                    echo json_encode(['success' => false, 'message' => 'Resource cannot be assigned right now']);
                     exit;
                 }
                 
@@ -348,6 +509,9 @@ try {
                 ");
                 
                 $stmt->execute([':id' => $resourceId]);
+
+                // Closing pending requests prevents the resource from remaining in Requested view.
+                resources_reject_pending_requests_for_resource($pdo, $resourceId, $requestUserId);
                 
                 echo json_encode(['success' => true, 'message' => 'Resource marked for maintenance']);
 
@@ -370,6 +534,16 @@ try {
                 $resource = resources_fetch_resource($pdo, $requestResourceId);
                 if (!$resource) {
                     echo json_encode(['success' => false, 'message' => 'Resource not found']);
+                    exit;
+                }
+
+                if ($resource['status'] !== 'available') {
+                    echo json_encode(['success' => false, 'message' => 'Only available resources can be requested']);
+                    exit;
+                }
+
+                if (resources_has_pending_request_for_resource($pdo, $requestResourceId)) {
+                    echo json_encode(['success' => false, 'message' => 'This resource already has a pending request']);
                     exit;
                 }
 
@@ -600,8 +774,12 @@ try {
                 exit;
             }
 
-            if ($requestRow['status'] !== 'pending') {
-                echo json_encode(['success' => false, 'message' => 'Request already reviewed']);
+            $currentStatus = (string)$requestRow['status'];
+            $canApprove = in_array($currentStatus, ['pending', 'rejected'], true);
+            $canReject = $currentStatus === 'pending';
+
+            if (($decision === 'approve' && !$canApprove) || ($decision === 'reject' && !$canReject)) {
+                echo json_encode(['success' => false, 'message' => 'Request cannot be reviewed with this action']);
                 exit;
             }
 
@@ -621,6 +799,9 @@ try {
                     ':assigned_to' => $requestForUserId,
                     ':id' => $resourceId,
                 ]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE resources SET status = 'available', assigned_to = NULL WHERE id = :id");
+                $stmt->execute([':id' => $resourceId]);
             }
 
             $newStatus = $decision === 'approve' ? 'approved' : 'rejected';

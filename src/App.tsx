@@ -7,7 +7,6 @@ import { useEffect } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
-import CreateTask from "./pages/CreateTask";
 import Approvals from "./pages/Approvals";
 import Resources from "./pages/Resources";
 import Reports from "./pages/Reports";
@@ -61,7 +60,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tasks" element={<Tasks />} />
-            <Route path="/tasks/create" element={<CreateTask />} />
+            <Route path="/tasks/create" element={<Navigate to="/tasks?create=1" replace />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/reports" element={<Reports />} />

@@ -11,13 +11,6 @@ interface Resource {
   name: string;
   type: ResourceType;
   status: ResourceStatus;
-  requestId?: number;
-  requestedBy?: {
-    id?: number;
-    name: string;
-    department?: string | null;
-  } | null;
-  requestedAt?: string | null;
   assignedTo?: { id: number; name: string };
   location?: string;
   description?: string;
@@ -30,11 +23,6 @@ interface UserSummary {
   role?: string;
 }
 
-interface ResourceFilterCounts {
-  types: Record<string, number>;
-  statuses: Record<string, number>;
-}
-
 const typeFilters = [
   { key: "all", label: "All", icon: null },
   { key: "device", label: "Devices", icon: Monitor },
@@ -44,26 +32,20 @@ const typeFilters = [
 ];
 
 const statusFilters = [
-  { key: "assigned", label: "Assigned" },
-  { key: "available", label: "Available" },
-  { key: "maintenance", label: "Maintenance" },
-  { key: "requested", label: "Requested" },
-  { key: "rejected", label: "Rejected" },
   { key: "all", label: "All Status" },
+  { key: "available", label: "Available" },
+  { key: "assigned", label: "Assigned" },
+  { key: "maintenance", label: "Maintenance" },
 ];
 
 export default function Resources() {
   const [currentUser, setCurrentUser] = useState<{ id: number; role?: string }>({ id: 0 });
   const [isAdmin, setIsAdmin] = useState(false);
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("assigned");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
-  const [filterCounts, setFilterCounts] = useState<ResourceFilterCounts>({
-    types: { all: 0, device: 0, software: 0, room: 0, equipment: 0 },
-    statuses: { all: 0, available: 0, assigned: 0, maintenance: 0, requested: 0, rejected: 0 },
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -120,9 +102,6 @@ export default function Resources() {
         setResources(data.resources);
         setUsers(data.users || []);
         setIsAdmin(Boolean(data.permissions?.isAdmin));
-        if (data.filterCounts) {
-          setFilterCounts(data.filterCounts);
-        }
       }
     } catch (error) {
       console.error('Failed to fetch resources:', error);
@@ -204,29 +183,20 @@ export default function Resources() {
     return matchesSearch;
   });
 
-  const getResourceSortWeight = (resource: Resource) => {
-    if (!isAdmin) {
-      if (resource.status === "assigned" && resource.assignedTo?.id === currentUser.id) return 0;
-      if (resource.status === "available") return 1;
-      if (resource.status === "maintenance") return 2;
-      if (resource.status === "requested") return 3;
-      if (resource.status === "rejected") return 4;
-      return 5;
-    }
-
-    if (resource.status === "requested") return 0;
-    if (resource.status === "available") return 1;
-    if (resource.status === "assigned") return 2;
-    if (resource.status === "maintenance") return 3;
-    if (resource.status === "rejected") return 4;
-    return 5;
+  const typeCounts = {
+    all: resources.length,
+    device: resources.filter(r => r.type === 'device').length,
+    software: resources.filter(r => r.type === 'software').length,
+    room: resources.filter(r => r.type === 'room').length,
+    equipment: resources.filter(r => r.type === 'equipment').length,
   };
 
-  const displayResources = [...filteredResources].sort((a, b) => {
-    const weightDiff = getResourceSortWeight(a) - getResourceSortWeight(b);
-    if (weightDiff !== 0) return weightDiff;
-    return a.name.localeCompare(b.name);
-  });
+  const statusCounts = {
+    all: resources.length,
+    available: resources.filter(r => r.status === 'available').length,
+    assigned: resources.filter(r => r.status === 'assigned').length,
+    maintenance: resources.filter(r => r.status === 'maintenance').length,
+  };
 
   const handleOpenFilterPanel = () => {
     setDraftTypeFilter(typeFilter);
@@ -245,7 +215,6 @@ export default function Resources() {
     setDraftStartDate("");
     setDraftEndDate("");
     setTypeFilter("all");
-    setStatusFilter("assigned");
     setIsFilterPanelOpen(false);
   };
 
@@ -340,115 +309,17 @@ export default function Resources() {
     }
   };
 
-  const handleRequestResource = async (resource: Resource) => {
+  const handleQuickResourceAction = async (resource: Resource, decision: 'approve' | 'reject') => {
     const confirmResult = await Swal.fire({
-      title: 'Request this resource?',
-      text: `Send request for ${resource.name}?`,
-      icon: 'question',
+      title: decision === 'approve' ? 'Approve Resource?' : 'Reject Resource?',
+      text: decision === 'approve'
+        ? `Mark ${resource.name} as available?`
+        : `Mark ${resource.name} as maintenance?`,
+      icon: decision === 'approve' ? 'question' : 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#3b82f6',
+      confirmButtonColor: decision === 'approve' ? '#3b82f6' : '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Request',
-      cancelButtonText: 'Cancel',
-    });
-
-    if (!confirmResult.isConfirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:8000/backend/resources.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: localStorage.getItem('token') || '',
-        },
-        body: JSON.stringify({
-          action: 'create_request',
-          user_id: currentUser.id,
-          resourceId: resource.id,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await Swal.fire({ icon: 'success', title: 'Requested', text: data.message || 'Resource requested successfully', confirmButtonColor: '#3b82f6', timer: 1300 });
-        fetchResources();
-      } else {
-        Swal.fire({ icon: 'error', title: 'Request failed', text: data.message || 'Unable to request resource', confirmButtonColor: '#3b82f6' });
-      }
-    } catch (error) {
-      console.error('Failed to request resource:', error);
-      Swal.fire({ icon: 'error', title: 'Request failed', text: 'Unable to request resource', confirmButtonColor: '#3b82f6' });
-    }
-  };
-
-  const handleAssignResource = async (resource: Resource) => {
-    if (!isAdmin) return;
-
-    if (!users.length) {
-      Swal.fire({ icon: 'warning', title: 'No users available', text: 'Add users before assigning resources.', confirmButtonColor: '#3b82f6' });
-      return;
-    }
-
-    const options = users.reduce<Record<string, string>>((acc, user) => {
-      acc[String(user.id)] = user.name;
-      return acc;
-    }, {});
-
-    const pick = await Swal.fire({
-      title: 'Assign Resource',
-      input: 'select',
-      inputOptions: options,
-      inputPlaceholder: 'Select a user',
-      showCancelButton: true,
-      confirmButtonText: 'Assign',
-      confirmButtonColor: '#3b82f6',
-      cancelButtonColor: '#64748b',
-      inputValidator: (value) => (!value ? 'Please select a user' : undefined),
-    });
-
-    if (!pick.isConfirmed || !pick.value) {
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:8000/backend/resources.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: localStorage.getItem('token') || '',
-        },
-        body: JSON.stringify({
-          action: 'assign',
-          user_id: currentUser.id,
-          id: resource.id,
-          assignTo: Number(pick.value),
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await Swal.fire({ icon: 'success', title: 'Assigned', text: data.message || 'Resource assigned successfully', confirmButtonColor: '#3b82f6', timer: 1300 });
-        fetchResources();
-      } else {
-        Swal.fire({ icon: 'error', title: 'Assign failed', text: data.message || 'Unable to assign resource', confirmButtonColor: '#3b82f6' });
-      }
-    } catch (error) {
-      console.error('Failed to assign resource:', error);
-      Swal.fire({ icon: 'error', title: 'Assign failed', text: 'Unable to assign resource', confirmButtonColor: '#3b82f6' });
-    }
-  };
-
-  const handleSetResourceAvailable = async (resource: Resource, title: string, text: string) => {
-    const confirmResult = await Swal.fire({
-      title,
-      text,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3b82f6',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Confirm',
+      confirmButtonText: decision === 'approve' ? 'Yes, approve' : 'Yes, reject',
       cancelButtonText: 'Cancel',
     });
 
@@ -471,102 +342,8 @@ export default function Resources() {
           type: resource.type,
           location: resource.location || '',
           description: resource.description || '',
-          status: 'available',
-          assignTo: 0,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await Swal.fire({ icon: 'success', title: 'Updated', text: data.message || 'Resource updated', confirmButtonColor: '#3b82f6', timer: 1300 });
-        fetchResources();
-      } else {
-        Swal.fire({ icon: 'error', title: 'Action failed', text: data.message || 'Unable to update resource', confirmButtonColor: '#3b82f6' });
-      }
-    } catch (error) {
-      console.error('Failed to set resource available:', error);
-      Swal.fire({ icon: 'error', title: 'Action failed', text: 'Unable to update resource', confirmButtonColor: '#3b82f6' });
-    }
-  };
-
-  const handleSetResourceMaintenance = async (resource: Resource) => {
-    const confirmResult = await Swal.fire({
-      title: 'Mark as maintenance?',
-      text: `Move ${resource.name} to maintenance?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3b82f6',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Confirm',
-      cancelButtonText: 'Cancel',
-    });
-
-    if (!confirmResult.isConfirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:8000/backend/resources.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: localStorage.getItem('token') || '',
-        },
-        body: JSON.stringify({
-          action: 'maintenance',
-          user_id: currentUser.id,
-          id: resource.id,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await Swal.fire({ icon: 'success', title: 'Updated', text: data.message || 'Resource moved to maintenance', confirmButtonColor: '#3b82f6', timer: 1300 });
-        fetchResources();
-      } else {
-        Swal.fire({ icon: 'error', title: 'Action failed', text: data.message || 'Unable to update resource', confirmButtonColor: '#3b82f6' });
-      }
-    } catch (error) {
-      console.error('Failed to set resource maintenance:', error);
-      Swal.fire({ icon: 'error', title: 'Action failed', text: 'Unable to update resource', confirmButtonColor: '#3b82f6' });
-    }
-  };
-
-  const handleReviewRequest = async (resource: Resource, decision: 'approve' | 'reject') => {
-    if (!resource.requestId) {
-      Swal.fire({ icon: 'error', title: 'Request missing', text: 'No request record was found for this resource.', confirmButtonColor: '#3b82f6' });
-      return;
-    }
-
-    const confirmResult = await Swal.fire({
-      title: decision === 'approve' ? 'Approve Resource?' : 'Reject Resource?',
-      text: decision === 'approve'
-        ? `Approve request for ${resource.name}?`
-        : `Reject request for ${resource.name}?`,
-      icon: decision === 'approve' ? 'question' : 'warning',
-      showCancelButton: true,
-      confirmButtonColor: decision === 'approve' ? '#3b82f6' : '#ef4444',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: decision === 'approve' ? 'Yes, approve' : 'Yes, reject',
-      cancelButtonText: 'Cancel',
-    });
-
-    if (!confirmResult.isConfirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:8000/backend/resources.php', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: localStorage.getItem('token') || '',
-        },
-        body: JSON.stringify({
-          action: 'review_request',
-          user_id: currentUser.id,
-          id: resource.requestId,
-          decision,
+          status: decision === 'approve' ? 'available' : 'maintenance',
+          assignTo: decision === 'approve' ? 0 : 0,
         }),
       });
       const data = await response.json();
@@ -651,9 +428,6 @@ export default function Resources() {
                           >
                             {Icon && <Icon className="w-3 h-3" />}
                             {filter.label}
-                            <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                              {filterCounts.types[filter.key] ?? 0}
-                            </span>
                           </button>
                         );
                       })}
@@ -736,7 +510,7 @@ export default function Resources() {
                   ? "bg-primary-foreground/20"
                   : "bg-muted text-muted-foreground"
               )}>
-                {filterCounts.statuses[filter.key] ?? 0}
+                {statusCounts[filter.key as keyof typeof statusCounts]}
               </span>
             </button>
           ))}
@@ -951,23 +725,14 @@ export default function Resources() {
       {/* Resources Grid */}
       {!isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr gap-5">
-          {displayResources.map((resource, index) => (
+          {filteredResources.map((resource, index) => (
             <ResourceCard
               key={resource.id}
               {...resource}
               isAdmin={isAdmin}
               onModify={() => openEditResourceModal(resource)}
-              onRequest={() => handleRequestResource(resource)}
-              onAssign={() => handleAssignResource(resource)}
-              onMarkAvailable={() => handleSetResourceAvailable(resource, 'Mark as Available?', `Move ${resource.name} back to available?`)}
-              onMaintenance={() => handleSetResourceMaintenance(resource)}
-              onApprove={() => handleReviewRequest(resource, 'approve')}
-              onReject={() => {
-                if (resource.status === 'assigned') {
-                  return handleSetResourceAvailable(resource, 'Unassign resource?', `Unassign ${resource.name} and move it to available?`);
-                }
-                return handleReviewRequest(resource, 'reject');
-              }}
+              onApprove={() => handleQuickResourceAction(resource, 'approve')}
+              onReject={() => handleQuickResourceAction(resource, 'reject')}
               delay={index * 0.05}
             />
           ))}
@@ -975,7 +740,7 @@ export default function Resources() {
       )}
 
       {/* Empty State */}
-      {!isLoading && displayResources.length === 0 && (
+      {!isLoading && filteredResources.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

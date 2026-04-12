@@ -167,23 +167,16 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated, task }: Create
           />
 
           {/* Modal */}
-          <motion.div
-            initial={isEditMode ? { opacity: 0, x: "100%" } : { opacity: 0, scale: 0.95, y: 20 }}
-            animate={isEditMode ? { opacity: 1, x: 0 } : { opacity: 1, scale: 1, y: 0 }}
-            exit={isEditMode ? { opacity: 0, x: "100%" } : { opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className={cn(
-              "fixed bg-card border border-border shadow-2xl z-50 flex flex-col",
-              isEditMode
-                ? "right-0 top-0 h-screen w-full max-w-2xl border-l rounded-none overflow-y-auto"
-                : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-auto max-h-[90vh] rounded-2xl"
-            )}
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="w-full max-w-2xl h-auto max-h-[90vh] rounded-2xl bg-card border border-border shadow-2xl flex flex-col"
+            >
             {/* Header */}
-            <div className={cn(
-              "sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10",
-              !isEditMode && "rounded-t-2xl"
-            )}>
+            <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
               <h2 className="text-xl font-semibold text-foreground">{isEditMode ? "Edit Task" : "Create New Task"}</h2>
               <button
                 onClick={onClose}
@@ -194,10 +187,7 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated, task }: Create
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className={cn(
-              "p-6 space-y-6",
-              isEditMode ? "overflow-y-auto" : "flex-1 overflow-y-auto"
-            )}>
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto">
               {/* Title */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
@@ -300,10 +290,7 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated, task }: Create
             </form>
 
             {/* Actions */}
-            <div className={cn(
-              "border-t border-border p-6 bg-card",
-              !isEditMode && "rounded-b-2xl"
-            )}>
+            <div className="border-t border-border p-6 bg-card rounded-b-2xl">
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
@@ -323,7 +310,8 @@ export function CreateTaskModal({ isOpen, onClose, onTaskCreated, task }: Create
                 </button>
               </div>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

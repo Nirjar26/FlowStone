@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ListTodo,
   RefreshCw,
   Shield,
@@ -10,6 +12,7 @@ import {
   UserCog,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
 import { AdminStatCard } from "./AdminStatCard";
 
@@ -59,6 +62,10 @@ interface NotificationsResponse {
 type TaskStatus = Task["status"];
 type ApprovalStatus = Approval["status"];
 type ResourceStatus = Resource["status"];
+type PopupKind = "users" | "tasks" | "approvals" | "resources";
+
+const PREVIEW_LIMIT = 20;
+const PAGE_SIZE = 10;
 
 export function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
@@ -68,6 +75,8 @@ export function AdminPanel() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [popupKind, setPopupKind] = useState<PopupKind | null>(null);
+  const [popupPage, setPopupPage] = useState(1);
 
   const getAuthHeaders = () => ({
     Authorization: localStorage.getItem("token") || "",
@@ -185,6 +194,52 @@ export function AdminPanel() {
       resourceStatusCounts,
     };
   }, [users, tasks, approvals, resources]);
+
+  const openPopup = (kind: PopupKind) => {
+    const sourceItems =
+      kind === "users"
+        ? users
+        : kind === "tasks"
+        ? tasks
+        : kind === "approvals"
+        ? approvals
+        : resources;
+
+    const startPage = Math.min(
+      Math.max(1, Math.ceil(sourceItems.length / PAGE_SIZE)),
+      Math.floor(PREVIEW_LIMIT / PAGE_SIZE) + 1
+    );
+
+    setPopupKind(kind);
+    setPopupPage(startPage);
+  };
+
+  const closePopup = () => {
+    setPopupKind(null);
+    setPopupPage(1);
+  };
+
+  const popupItems = useMemo(() => {
+    if (popupKind === "users") return users;
+    if (popupKind === "tasks") return tasks;
+    if (popupKind === "approvals") return approvals;
+    if (popupKind === "resources") return resources;
+    return [];
+  }, [popupKind, users, tasks, approvals, resources]);
+
+  const popupTitle =
+    popupKind === "users"
+      ? "All Users"
+      : popupKind === "tasks"
+      ? "All Tasks"
+      : popupKind === "approvals"
+      ? "All Approvals"
+      : popupKind === "resources"
+      ? "All Resources"
+      : "";
+
+  const totalPages = Math.max(1, Math.ceil(popupItems.length / PAGE_SIZE));
+  const paginatedPopupItems = popupItems.slice((popupPage - 1) * PAGE_SIZE, popupPage * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -316,7 +371,18 @@ export function AdminPanel() {
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold text-foreground">All Users</h3>
-          <span className="text-xs text-muted-foreground">{users.length} users</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{users.length} users</span>
+            {users.length > PREVIEW_LIMIT && (
+              <button
+                type="button"
+                onClick={() => openPopup("users")}
+                className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                View All
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -331,7 +397,7 @@ export function AdminPanel() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {users.slice(0, PREVIEW_LIMIT).map((user) => (
                 <tr key={user.id} className="border-b border-border/50 last:border-0">
                   <td className="py-3 pr-3 text-muted-foreground">#{user.id}</td>
                   <td className="py-3 pr-3 text-foreground font-medium">{user.name}</td>
@@ -363,7 +429,18 @@ export function AdminPanel() {
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold text-foreground">All Tasks</h3>
-          <span className="text-xs text-muted-foreground">{tasks.length} tasks</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{tasks.length} tasks</span>
+            {tasks.length > PREVIEW_LIMIT && (
+              <button
+                type="button"
+                onClick={() => openPopup("tasks")}
+                className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                View All
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -379,7 +456,7 @@ export function AdminPanel() {
               </tr>
             </thead>
             <tbody>
-              {tasks.map((task) => (
+              {tasks.slice(0, PREVIEW_LIMIT).map((task) => (
                 <tr key={task.id} className="border-b border-border/50 last:border-0">
                   <td className="py-3 pr-3 text-muted-foreground">#{task.id}</td>
                   <td className="py-3 pr-3 text-foreground max-w-[300px] truncate">{task.title}</td>
@@ -429,7 +506,18 @@ export function AdminPanel() {
         >
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-semibold text-foreground">All Approvals</h3>
-            <span className="text-xs text-muted-foreground">{approvals.length} approvals</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{approvals.length} approvals</span>
+              {approvals.length > PREVIEW_LIMIT && (
+                <button
+                  type="button"
+                  onClick={() => openPopup("approvals")}
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  View All
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -445,7 +533,7 @@ export function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {approvals.map((approval) => (
+                {approvals.slice(0, PREVIEW_LIMIT).map((approval) => (
                   <tr key={approval.id} className="border-b border-border/50 last:border-0">
                     <td className="py-3 pr-3 text-muted-foreground">#{approval.id}</td>
                     <td className="py-3 pr-3 text-foreground">{approval.type}</td>
@@ -480,7 +568,18 @@ export function AdminPanel() {
         >
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-semibold text-foreground">All Resources</h3>
-            <span className="text-xs text-muted-foreground">{resources.length} resources</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{resources.length} resources</span>
+              {resources.length > PREVIEW_LIMIT && (
+                <button
+                  type="button"
+                  onClick={() => openPopup("resources")}
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  View All
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -494,7 +593,7 @@ export function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {resources.map((resource) => (
+                {resources.slice(0, PREVIEW_LIMIT).map((resource) => (
                   <tr key={resource.id} className="border-b border-border/50 last:border-0">
                     <td className="py-3 pr-3 text-muted-foreground">#{resource.id}</td>
                     <td className="py-3 pr-3 text-foreground">{resource.name}</td>
@@ -524,6 +623,136 @@ export function AdminPanel() {
           </div> */}
         </motion.div>
       </div>
+
+      {popupKind && popupItems.length > PREVIEW_LIMIT && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-5xl rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">{popupTitle}</h3>
+                <p className="text-xs text-muted-foreground">Showing {(popupPage - 1) * PAGE_SIZE + 1}-{Math.min(popupPage * PAGE_SIZE, popupItems.length)} of {popupItems.length}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closePopup}
+                className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-auto px-6 py-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    {popupKind === "users" && (
+                      <>
+                        <th className="text-left py-2 pr-3 font-medium">ID</th>
+                        <th className="text-left py-2 pr-3 font-medium">Name</th>
+                        <th className="text-left py-2 pr-3 font-medium">Email</th>
+                        <th className="text-left py-2 pr-3 font-medium">Role</th>
+                        <th className="text-left py-2 pr-3 font-medium">Department</th>
+                      </>
+                    )}
+                    {popupKind === "tasks" && (
+                      <>
+                        <th className="text-left py-2 pr-3 font-medium">ID</th>
+                        <th className="text-left py-2 pr-3 font-medium">Title</th>
+                        <th className="text-left py-2 pr-3 font-medium">Assignee</th>
+                        <th className="text-left py-2 pr-3 font-medium">Priority</th>
+                        <th className="text-left py-2 pr-3 font-medium">Status</th>
+                        <th className="text-left py-2 pr-3 font-medium">Deadline</th>
+                      </>
+                    )}
+                    {popupKind === "approvals" && (
+                      <>
+                        <th className="text-left py-2 pr-3 font-medium">ID</th>
+                        <th className="text-left py-2 pr-3 font-medium">Type</th>
+                        <th className="text-left py-2 pr-3 font-medium">Requested By</th>
+                        <th className="text-left py-2 pr-3 font-medium">Department</th>
+                        <th className="text-left py-2 pr-3 font-medium">Status</th>
+                        <th className="text-left py-2 pr-3 font-medium">Date</th>
+                      </>
+                    )}
+                    {popupKind === "resources" && (
+                      <>
+                        <th className="text-left py-2 pr-3 font-medium">ID</th>
+                        <th className="text-left py-2 pr-3 font-medium">Name</th>
+                        <th className="text-left py-2 pr-3 font-medium">Type</th>
+                        <th className="text-left py-2 pr-3 font-medium">Status</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {popupKind === "users" && (paginatedPopupItems as User[]).map((user) => (
+                    <tr key={user.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-3 text-muted-foreground">#{user.id}</td>
+                      <td className="py-3 pr-3 text-foreground font-medium">{user.name}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{user.email}</td>
+                      <td className="py-3 pr-3">{user.role || "N/A"}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{user.department || "-"}</td>
+                    </tr>
+                  ))}
+
+                  {popupKind === "tasks" && (paginatedPopupItems as Task[]).map((task) => (
+                    <tr key={task.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-3 text-muted-foreground">#{task.id}</td>
+                      <td className="py-3 pr-3 text-foreground max-w-[320px] truncate">{task.title}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{task.assignee?.name || "Unassigned"}</td>
+                      <td className="py-3 pr-3 text-muted-foreground capitalize">{task.priority}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{task.status}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{task.deadline || "-"}</td>
+                    </tr>
+                  ))}
+
+                  {popupKind === "approvals" && (paginatedPopupItems as Approval[]).map((approval) => (
+                    <tr key={approval.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-3 text-muted-foreground">#{approval.id}</td>
+                      <td className="py-3 pr-3 text-foreground">{approval.type}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{approval.requestedBy?.name || "-"}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{approval.requestedBy?.department || "-"}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{approval.status}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{approval.date}</td>
+                    </tr>
+                  ))}
+
+                  {popupKind === "resources" && (paginatedPopupItems as Resource[]).map((resource) => (
+                    <tr key={resource.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-3 text-muted-foreground">#{resource.id}</td>
+                      <td className="py-3 pr-3 text-foreground">{resource.name}</td>
+                      <td className="py-3 pr-3 text-muted-foreground capitalize">{resource.type}</td>
+                      <td className="py-3 pr-3 text-muted-foreground">{resource.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border px-6 py-3">
+              <button
+                type="button"
+                onClick={() => setPopupPage((prev) => Math.max(1, prev - 1))}
+                disabled={popupPage === 1}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Previous
+              </button>
+              <span className="text-xs text-muted-foreground">Page {popupPage} of {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setPopupPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={popupPage === totalPages}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

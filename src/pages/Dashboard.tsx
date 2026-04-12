@@ -35,14 +35,6 @@ interface DashboardData {
     action: string;
     time: string;
   }>;
-  operationalGroups?: Array<{
-    title: string;
-    items: Array<{
-      label: string;
-      value: string;
-      hint: string;
-    }>;
-  }>;
 }
 
 export default function Dashboard() {
@@ -50,7 +42,6 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState("User");
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -60,20 +51,7 @@ export default function Dashboard() {
     if (user.name) {
       setUserName(user.name.split(' ')[0]); // First name only
     }
-    setIsAdmin((user.role || '').toLowerCase().includes('admin'));
   }, []);
-
-  const getOperationalMetricRoute = (label: string) => {
-    const normalized = label.toLowerCase();
-
-    if (normalized.includes('approval')) return '/approvals';
-    if (normalized.includes('resource')) return '/resources';
-    if (normalized.includes('notification')) return '/notifications';
-    if (normalized.includes('system')) return '/admin';
-    if (normalized.includes('task') || normalized.includes('workload') || normalized.includes('incident')) return '/tasks';
-
-    return '/dashboard';
-  };
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -175,7 +153,7 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-foreground mb-5">Quick Actions</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: "New Task", icon: ListTodo, onClick: () => navigate("/tasks/create") },
+                { label: "New Task", icon: ListTodo, onClick: () => navigate("/tasks?create=1") },
                 { label: "Book Resource", icon: Package, onClick: () => navigate("/resources") },
                 { label: "Submit Request", icon: ClipboardCheck, onClick: () => navigate("/approvals") },
                 { label: "View Reports", icon: BarChart3, onClick: () => navigate("/reports") },
@@ -211,43 +189,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {data.operationalGroups && data.operationalGroups.length > 0 && (
-        <div className="mt-8 space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Operational Metrics</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {data.operationalGroups.map((group) => (
-              <div key={group.title} className="card-elevated p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-4">{group.title}</h3>
-                <div className="space-y-3">
-                  {group.items.map((item) => (
-                    <div
-                      key={item.label}
-                      role={isAdmin ? 'button' : undefined}
-                      tabIndex={isAdmin ? 0 : -1}
-                      onClick={isAdmin ? () => navigate(getOperationalMetricRoute(item.label)) : undefined}
-                      onKeyDown={isAdmin ? (event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          navigate(getOperationalMetricRoute(item.label));
-                        }
-                      } : undefined}
-                      className={`rounded-xl border border-border/60 bg-muted/30 px-3 py-3 transition-colors ${isAdmin ? 'cursor-pointer hover:bg-muted/55' : ''}`}
-                    >
-                      <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
-                        <p className="text-sm font-medium text-foreground/90 leading-5">{item.label}</p>
-                        <div className="w-20 flex items-center justify-center justify-self-center">
-                          <p className="text-base font-semibold text-foreground text-center leading-none">{item.value}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-foreground/75 mt-1.5 leading-4">{item.hint}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

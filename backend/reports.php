@@ -122,6 +122,32 @@ if (!$isAdmin && $resolvedUserId > 0) {
     $taskScopeParams['scope_user_id'] = $resolvedUserId;
 }
 
+$statusFilter = strtolower(trim((string) ($_GET['status'] ?? 'all')));
+$priorityFilter = strtolower(trim((string) ($_GET['priority'] ?? 'all')));
+$allowedTaskStatuses = ['all', 'pending', 'in-progress', 'review', 'completed'];
+$allowedTaskPriorities = ['all', 'low', 'medium', 'high'];
+
+if (!in_array($statusFilter, $allowedTaskStatuses, true)) {
+    $statusFilter = 'all';
+}
+
+if (!in_array($priorityFilter, $allowedTaskPriorities, true)) {
+    $priorityFilter = 'all';
+}
+
+$taskFilterClause = '';
+$taskFilterParams = [];
+if ($statusFilter !== 'all') {
+    $taskFilterClause .= ' AND t.status = :filter_status';
+    $taskFilterParams['filter_status'] = $statusFilter;
+}
+if ($priorityFilter !== 'all') {
+    $taskFilterClause .= ' AND t.priority = :filter_priority';
+    $taskFilterParams['filter_priority'] = $priorityFilter;
+}
+
+$taskAllParams = array_merge($taskScopeParams, $taskFilterParams);
+
 try {
     // KPI: Total Tasks Completed (current period)
     $stmt = $pdo->prepare(
@@ -129,12 +155,12 @@ try {
          FROM tasks t
          WHERE t.status = 'completed'
            AND t.updated_at >= :range_start
-           AND t.updated_at < :range_end" . $taskScopeClause
+           AND t.updated_at < :range_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $totalCompleted = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
@@ -144,12 +170,12 @@ try {
          FROM tasks t
          WHERE t.status = 'completed'
            AND t.updated_at >= :prev_start
-           AND t.updated_at < :prev_end" . $taskScopeClause
+           AND t.updated_at < :prev_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'prev_start' => $prevRangeStart->format('Y-m-d H:i:s'),
         'prev_end' => $prevRangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $prevCompleted = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $completedChange = reports_percent_change((float) $totalCompleted, (float) $prevCompleted);
@@ -159,12 +185,12 @@ try {
         "SELECT COUNT(DISTINCT t.created_by) as total
          FROM tasks t
          WHERE t.created_at >= :range_start
-           AND t.created_at < :range_end" . $taskScopeClause
+           AND t.created_at < :range_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $activeUsers = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
@@ -172,12 +198,12 @@ try {
         "SELECT COUNT(DISTINCT t.created_by) as total
          FROM tasks t
          WHERE t.created_at >= :prev_start
-           AND t.created_at < :prev_end" . $taskScopeClause
+           AND t.created_at < :prev_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'prev_start' => $prevRangeStart->format('Y-m-d H:i:s'),
         'prev_end' => $prevRangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $prevActiveUsers = (int) $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $usersChange = reports_percent_change((float) $activeUsers, (float) $prevActiveUsers);
@@ -224,12 +250,12 @@ try {
          FROM tasks t
          WHERE t.status = 'completed'
            AND t.updated_at >= :range_start
-           AND t.updated_at < :range_end" . $taskScopeClause
+           AND t.updated_at < :range_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $avgCompletionTimeRaw = $stmt->fetch(PDO::FETCH_ASSOC)['avg_days'];
     $avgCompletionTime = $avgCompletionTimeRaw !== null ? round((float) $avgCompletionTimeRaw, 1) : 0.0;
@@ -239,12 +265,12 @@ try {
          FROM tasks t
          WHERE t.status = 'completed'
            AND t.updated_at >= :prev_start
-           AND t.updated_at < :prev_end" . $taskScopeClause
+           AND t.updated_at < :prev_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'prev_start' => $prevRangeStart->format('Y-m-d H:i:s'),
         'prev_end' => $prevRangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $prevAvgCompletionRaw = $stmt->fetch(PDO::FETCH_ASSOC)['avg_days'];
     $prevAvgCompletion = $prevAvgCompletionRaw !== null ? (float) $prevAvgCompletionRaw : 0.0;
@@ -259,12 +285,12 @@ try {
          WHERE t.status = 'completed'
            AND t.deadline IS NOT NULL
            AND t.updated_at >= :range_start
-           AND t.updated_at < :range_end" . $taskScopeClause
+           AND t.updated_at < :range_end" . $taskScopeClause . $taskFilterClause
     );
     reports_bind_task_scope($stmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+    ], $taskAllParams));
     $stmt->execute();
     $onTimeRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $onTimeDenominator = (int) ($onTimeRow['total_with_deadline'] ?? 0);
@@ -276,18 +302,18 @@ try {
          FROM tasks t
          WHERE t.status IN ('pending', 'in-progress', 'review')
            AND t.deadline IS NOT NULL
-           AND t.deadline < CURDATE()" . $taskScopeClause
+            AND t.deadline < CURDATE()" . $taskScopeClause . $taskFilterClause
     );
-    reports_bind_task_scope($stmt, $taskScopeParams);
+        reports_bind_task_scope($stmt, $taskAllParams);
     $stmt->execute();
     $overdueOpenTasks = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
     $stmt = $pdo->prepare(
         "SELECT COUNT(*) AS total
          FROM tasks t
-         WHERE t.status IN ('pending', 'in-progress', 'review')" . $taskScopeClause
+            WHERE t.status IN ('pending', 'in-progress', 'review')" . $taskScopeClause . $taskFilterClause
     );
-    reports_bind_task_scope($stmt, $taskScopeParams);
+        reports_bind_task_scope($stmt, $taskAllParams);
     $stmt->execute();
     $workInProgressTasks = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
     
@@ -298,13 +324,13 @@ try {
             COUNT(*) as total
          FROM tasks t
          WHERE t.created_at >= :range_start
-           AND t.created_at < :range_end" . $taskScopeClause . "
+                     AND t.created_at < :range_end" . $taskScopeClause . $taskFilterClause . "
          GROUP BY ym"
     );
     reports_bind_task_scope($createdStmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+        ], $taskAllParams));
     $createdStmt->execute();
     $createdRows = $createdStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -315,13 +341,13 @@ try {
          FROM tasks t
          WHERE t.status = 'completed'
            AND t.updated_at >= :range_start
-           AND t.updated_at < :range_end" . $taskScopeClause . "
+                     AND t.updated_at < :range_end" . $taskScopeClause . $taskFilterClause . "
          GROUP BY ym"
     );
     reports_bind_task_scope($completedStmt, array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ], $taskScopeParams));
+        ], $taskAllParams));
     $completedStmt->execute();
     $completedRows = $completedStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -351,6 +377,26 @@ try {
     }
     
     // User Performance (all performers by completed tasks in selected period)
+    $userJoinFilterClause = '';
+    $userJoinFilterParams = [];
+    if ($statusFilter !== 'all') {
+        $userJoinFilterClause .= ' AND t.status = :join_filter_status';
+        $userJoinFilterParams['join_filter_status'] = $statusFilter;
+    } else {
+        $userJoinFilterClause .= " AND t.status = 'completed'";
+    }
+    if ($priorityFilter !== 'all') {
+        $userJoinFilterClause .= ' AND t.priority = :join_filter_priority';
+        $userJoinFilterParams['join_filter_priority'] = $priorityFilter;
+    }
+
+    $userPerformanceScopeClause = '';
+    $userPerformanceScopeParams = [];
+    if (!$isAdmin && $resolvedUserId > 0) {
+        $userPerformanceScopeClause = ' WHERE u.id = :scope_user_id';
+        $userPerformanceScopeParams['scope_user_id'] = $resolvedUserId;
+    }
+
     $stmt = $pdo->prepare(
         "SELECT
             u.name,
@@ -358,16 +404,16 @@ try {
         FROM users u
         LEFT JOIN tasks t
                ON t.assignee_id = u.id
-              AND t.status = 'completed'
               AND t.updated_at >= :range_start
-              AND t.updated_at < :range_end
+              AND t.updated_at < :range_end" . $userJoinFilterClause . "
+        " . $userPerformanceScopeClause . "
         GROUP BY u.id, u.name
         ORDER BY tasks DESC, u.name ASC"
     );
-    $stmt->execute([
+    $stmt->execute(array_merge([
         'range_start' => $rangeStart->format('Y-m-d H:i:s'),
         'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
-    ]);
+    ], $userJoinFilterParams, $userPerformanceScopeParams));
     $userPerformance = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Format user performance
@@ -380,15 +426,28 @@ try {
     }
     
     // Resource Utilization by Type
-    $stmt = $pdo->query("
-        SELECT 
-            type,
-            COUNT(*) as total,
-            SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assigned
-        FROM resources
-        GROUP BY type
-    ");
-    $resourceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($isAdmin) {
+        $stmt = $pdo->query(" 
+            SELECT 
+                type,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assigned
+            FROM resources
+            GROUP BY type
+        ");
+        $resourceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmt = $pdo->prepare(" 
+            SELECT 
+                type,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'assigned' AND assigned_to = :scope_user_id THEN 1 ELSE 0 END) as assigned
+            FROM resources
+            GROUP BY type
+        ");
+        $stmt->execute(['scope_user_id' => $resolvedUserId]);
+        $resourceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     // Format resource utilization
     $resourceUtilization = [];
@@ -428,6 +487,52 @@ try {
             ['name' => 'Equipment', 'value' => 54, 'color' => 'hsl(158, 50%, 42%)']
         ];
     }
+
+    // Advanced Report 4: Complexity vs Completion Time (priority as complexity proxy)
+    $complexityStmt = $pdo->prepare(
+        "SELECT
+            t.priority,
+            COUNT(*) AS total,
+            AVG(DATEDIFF(DATE(t.updated_at), DATE(t.created_at))) AS avg_days
+         FROM tasks t
+         WHERE t.status = 'completed'
+           AND t.updated_at >= :range_start
+           AND t.updated_at < :range_end" . $taskScopeClause . $taskFilterClause . "
+         GROUP BY t.priority"
+    );
+    reports_bind_task_scope($complexityStmt, array_merge([
+        'range_start' => $rangeStart->format('Y-m-d H:i:s'),
+        'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
+    ], $taskAllParams));
+    $complexityStmt->execute();
+    $complexityRows = $complexityStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $avgByPriority = ['low' => 0.0, 'medium' => 0.0, 'high' => 0.0];
+    foreach ($complexityRows as $row) {
+        $priority = (string) ($row['priority'] ?? '');
+        if (array_key_exists($priority, $avgByPriority)) {
+            $avgByPriority[$priority] = $row['avg_days'] !== null ? round((float) $row['avg_days'], 1) : 0.0;
+        }
+    }
+
+    $outlierBaseline = max(1.0, (float) $avgCompletionTime * 1.5);
+    $outlierStmt = $pdo->prepare(
+        "SELECT COUNT(*) AS total
+         FROM tasks t
+         WHERE t.status = 'completed'
+           AND t.updated_at >= :range_start
+           AND t.updated_at < :range_end
+           AND DATEDIFF(DATE(t.updated_at), DATE(t.created_at)) > :outlier_days" . $taskScopeClause . $taskFilterClause
+    );
+    reports_bind_task_scope($outlierStmt, array_merge([
+        'range_start' => $rangeStart->format('Y-m-d H:i:s'),
+        'range_end' => $rangeEndExclusive->format('Y-m-d H:i:s'),
+        'outlier_days' => (int) ceil($outlierBaseline),
+    ], $taskAllParams));
+    $outlierStmt->execute();
+    $outlierCount = (int) (($outlierStmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0));
+
+    $complexityTrend = round($avgByPriority['high'] - $avgByPriority['low'], 1);
     
     echo json_encode([
         'success' => true,
@@ -474,6 +579,22 @@ try {
         'monthlyTasks' => $monthlyTasks,
         'userPerformance' => $formattedUserPerformance,
         'resourceUtilization' => $resourceUtilization
+        ,
+        'advancedReports' => [
+            'complexityVsTime' => [
+                'avgDaysByPriority' => [
+                    'low' => $avgByPriority['low'],
+                    'medium' => $avgByPriority['medium'],
+                    'high' => $avgByPriority['high'],
+                ],
+                'outlierCount' => $outlierCount,
+                'complexityDelayTrend' => $complexityTrend,
+            ],
+        ],
+        'appliedFilters' => [
+            'status' => $statusFilter,
+            'priority' => $priorityFilter,
+        ]
     ]);
     
 } catch (PDOException $e) {

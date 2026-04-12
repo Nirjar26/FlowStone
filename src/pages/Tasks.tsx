@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Plus, Search, Grid3X3, List, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Search, Grid3X3, List, X, SlidersHorizontal } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TaskCard, TaskStatus, TaskPriority } from "@/components/tasks/TaskCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Swal from 'sweetalert2';
 
 interface Task {
@@ -33,21 +33,33 @@ const statusFilters = [
 ];
 
 export default function Tasks() {
-  const navigate = useNavigate();
+  const location = useLocation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<Array<{ id: number; name: string; email: string }>>([]);
   const [currentUser, setCurrentUser] = useState<{ id: number; role?: string; name?: string }>({ id: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortMode, setSortMode] = useState<"newest" | "oldest">("newest");
   const [createdDateFilter, setCreatedDateFilter] = useState("");
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>("");
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [draftSortMode, setDraftSortMode] = useState<"newest" | "oldest">("newest");
+  const [draftCreatedDateFilter, setDraftCreatedDateFilter] = useState("");
+  const [draftAssigneeId, setDraftAssigneeId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    pending: 0,
+    "in-progress": 0,
+    review: 0,
+    completed: 0,
+  });
 
   useEffect(() => {
     fetchTasks();
@@ -64,6 +76,16 @@ export default function Tasks() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const shouldOpenCreateModal =
+      location.pathname === "/tasks/create" || searchParams.get("create") === "1";
+
+    if (shouldOpenCreateModal) {
+      setIsCreateModalOpen(true);
+    }
+  }, [location.pathname, location.search]);
 
   const fetchUsers = async () => {
     try {
@@ -90,7 +112,11 @@ export default function Tasks() {
   const fetchTasks = async () => {
     setIsLoading(true);
     try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
       const params = new URLSearchParams();
+      if (user?.id) {
+        params.append('user_id', String(user.id));
+      }
       if (activeFilter !== 'all') {
         params.append('status', activeFilter);
       }
@@ -114,6 +140,9 @@ export default function Tasks() {
 
       if (data.success) {
         setTasks(data.tasks);
+        if (data.statusCounts) {
+          setStatusCounts(data.statusCounts);
+        }
       } else {
         Swal.fire({
           icon: 'error',
@@ -145,6 +174,31 @@ export default function Tasks() {
 
   const handleAssigneeChange = (value: string) => {
     setSelectedAssigneeId(value);
+  };
+
+  const handleOpenFilterPanel = () => {
+    setDraftSortMode(sortMode);
+    setDraftCreatedDateFilter(createdDateFilter);
+    setDraftAssigneeId(selectedAssigneeId);
+    setIsFilterPanelOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setSortMode(draftSortMode);
+    setCreatedDateFilter(draftCreatedDateFilter);
+    setSelectedAssigneeId(draftAssigneeId);
+    setIsFilterPanelOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    setDraftSortMode("newest");
+    setDraftCreatedDateFilter("");
+    setDraftAssigneeId("");
+
+    setSortMode("newest");
+    setCreatedDateFilter("");
+    setSelectedAssigneeId("");
+    setIsFilterPanelOpen(false);
   };
 
   const handleEditTask = (task: Task) => {
@@ -311,8 +365,8 @@ export default function Tasks() {
           {/* Header Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         {/* Search and Filters */}
-        <div className="flex items-center gap-3 flex-1 w-full sm:w-auto flex-wrap">
-          <div className="relative flex-1 max-w-md">
+        <div className="relative min-w-0 flex items-center gap-2">
+          <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
@@ -320,75 +374,159 @@ export default function Tasks() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
+              className="w-full pl-10 pr-10 py-2.5 bg-card border border-border/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
-          <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-            <button
-              type="button"
-              onClick={() => handleSortChange('newest')}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                sortMode === 'newest'
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              Newest
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSortChange('oldest')}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                sortMode === 'oldest'
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              Oldest
-            </button>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
-            <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              Date Created
-            </label>
-            <input
-              type="date"
-              value={createdDateFilter}
-              onChange={(e) => setCreatedDateFilter(e.target.value)}
-              className="bg-transparent text-sm text-foreground focus:outline-none"
-            />
-            {createdDateFilter && (
-              <button
-                type="button"
-                onClick={() => setCreatedDateFilter("")}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </button>
+
+          <button
+            type="button"
+            onClick={handleOpenFilterPanel}
+            className={cn(
+              "h-10 w-10 shrink-0 rounded-xl border border-border/70 bg-card text-muted-foreground flex items-center justify-center transition-all duration-200",
+              "hover:text-foreground hover:border-border hover:bg-muted/40",
+              isFilterPanelOpen && "text-primary border-primary/40 bg-primary/10"
             )}
-          </div>
-          <select
-            value={selectedAssigneeId}
-            onChange={(e) => handleAssigneeChange(e.target.value)}
-            className="min-w-[180px] px-3 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
+            aria-label="Open filters"
           >
-            <option value="">Assigned User</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {statusFilters.map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setActiveFilter(filter.key)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2",
+                  activeFilter === filter.key
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                )}
+              >
+                <span>{filter.label}</span>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-semibold",
+                    activeFilter === filter.key
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {statusCounts[filter.key as keyof typeof statusCounts]}
+                </span>
+              </button>
             ))}
-          </select>
+          </div>
+
+          <AnimatePresence>
+            {isFilterPanelOpen && (
+              <>
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsFilterPanelOpen(false)}
+                  className="fixed inset-0 z-30 bg-black/10"
+                  aria-label="Close filters"
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute right-0 top-full mt-2 z-40 w-[min(100%,26rem)] rounded-2xl border border-border/70 bg-card shadow-xl"
+                >
+                  <div className="p-4 sm:p-5 space-y-5">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Sort</h3>
+                      <div className="mt-3 inline-flex items-center gap-1 rounded-xl border border-border/70 bg-muted/20 p-1">
+                        <button
+                          type="button"
+                          onClick={() => setDraftSortMode("newest")}
+                          className={cn(
+                            "px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                            draftSortMode === "newest"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          Newest
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDraftSortMode("oldest")}
+                          className={cn(
+                            "px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                            draftSortMode === "oldest"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          Oldest
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-border/60" />
+
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Date Filter</h3>
+                        <input
+                          type="date"
+                          value={draftCreatedDateFilter}
+                          onChange={(e) => setDraftCreatedDateFilter(e.target.value)}
+                          className="mt-3 w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Assigned To</h3>
+                        <select
+                          value={draftAssigneeId}
+                          onChange={(e) => setDraftAssigneeId(e.target.value)}
+                          className="mt-3 w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40 transition-all"
+                        >
+                          <option value="">Any assignee</option>
+                          {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border/60 px-4 sm:px-5 py-3 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApplyFilters}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 active:scale-[0.98] transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* View Toggle and Create */}
@@ -420,31 +558,13 @@ export default function Tasks() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/tasks/create')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="btn-primary-gradient flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             <span>Create Task</span>
           </motion.button>
         </div>
-      </div>
-
-      {/* Status Filters */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-        {statusFilters.map((filter) => (
-          <button
-            key={filter.key}
-            onClick={() => setActiveFilter(filter.key)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
-              activeFilter === filter.key
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
-            )}
-          >
-            {filter.label}
-          </button>
-        ))}
       </div>
 
       {/* Task Grid */}
@@ -513,6 +633,17 @@ export default function Tasks() {
           fetchTasks();
         }}
         task={editingTask}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+        }}
+        onTaskCreated={() => {
+          fetchTasks();
+        }}
       />
         </>
       )}

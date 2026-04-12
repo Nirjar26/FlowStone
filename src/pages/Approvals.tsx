@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Plus, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, X, Search, SlidersHorizontal } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApprovalCard, ApprovalStatus } from "@/components/approvals/ApprovalCard";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,10 @@ export default function Approvals() {
   const [typeFilter, setTypeFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [createdDateFilter, setCreatedDateFilter] = useState("");
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [draftTypeFilter, setDraftTypeFilter] = useState("");
+  const [draftDepartmentFilter, setDraftDepartmentFilter] = useState("");
+  const [draftCreatedDateFilter, setDraftCreatedDateFilter] = useState("");
   const [createForm, setCreateForm] = useState({
     type: "",
     department: "",
@@ -392,6 +396,30 @@ export default function Approvals() {
     setCreatedDateFilter("");
   };
 
+  const handleOpenFilterPanel = () => {
+    setDraftTypeFilter(typeFilter);
+    setDraftDepartmentFilter(departmentFilter);
+    setDraftCreatedDateFilter(createdDateFilter);
+    setIsFilterPanelOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setTypeFilter(draftTypeFilter);
+    setDepartmentFilter(draftDepartmentFilter);
+    setCreatedDateFilter(draftCreatedDateFilter);
+    setIsFilterPanelOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    setDraftTypeFilter("");
+    setDraftDepartmentFilter("");
+    setDraftCreatedDateFilter("");
+    setTypeFilter("");
+    setDepartmentFilter("");
+    setCreatedDateFilter("");
+    setIsFilterPanelOpen(false);
+  };
+
   return (
     <AppLayout title="Approvals" subtitle="Review and manage pending approval requests.">
       {/* Create Request Modal */}
@@ -578,104 +606,166 @@ export default function Approvals() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="mb-6 flex items-center justify-between gap-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as ApprovalStatus)}
-              className={cn(
-                "relative px-4 py-3 text-sm font-medium transition-colors",
-                activeTab === tab.key
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className="flex items-center gap-2">
-                {tab.label}
+      {/* Search + Actions */}
+      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative min-w-0 flex items-center gap-2">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search approvals..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border/80 bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenFilterPanel}
+            className={cn(
+              "h-10 w-10 shrink-0 rounded-xl border border-border/70 bg-card text-muted-foreground flex items-center justify-center transition-all duration-200",
+              "hover:text-foreground hover:border-border hover:bg-muted/40",
+              isFilterPanelOpen && "text-primary border-primary/40 bg-primary/10"
+            )}
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as ApprovalStatus)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2",
+                  activeTab === tab.key
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                )}
+              >
+                <span>{tab.label}</span>
                 <span
                   className={cn(
                     "px-2 py-0.5 rounded-full text-xs font-semibold",
                     activeTab === tab.key
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
                   {tab.count}
                 </span>
-              </span>
-              {activeTab === tab.key && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence>
+            {isFilterPanelOpen && (
+              <>
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsFilterPanelOpen(false)}
+                  className="fixed inset-0 z-30 bg-black/10"
+                  aria-label="Close filters"
                 />
-              )}
-            </button>
-          ))}
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute right-0 top-full mt-2 z-40 w-[min(100%,24rem)] rounded-2xl border border-border/70 bg-card shadow-xl"
+                >
+                  <div className="p-4 sm:p-5 space-y-5">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Type</h3>
+                      <select
+                        value={draftTypeFilter}
+                        onChange={(e) => setDraftTypeFilter(e.target.value)}
+                        className="mt-3 w-full rounded-xl border border-border/70 bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40"
+                      >
+                        <option value="">All Types</option>
+                        {typeOptions.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="h-px bg-border/60" />
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Department</h3>
+                      <select
+                        value={draftDepartmentFilter}
+                        onChange={(e) => setDraftDepartmentFilter(e.target.value)}
+                        className="mt-3 w-full rounded-xl border border-border/70 bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40"
+                      >
+                        <option value="">All Departments</option>
+                        {departmentOptions.map((department) => (
+                          <option key={department} value={department}>
+                            {department}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="h-px bg-border/60" />
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Date Filter</h3>
+                      <input
+                        type="date"
+                        value={draftCreatedDateFilter}
+                        onChange={(e) => setDraftCreatedDateFilter(e.target.value)}
+                        className="mt-3 w-full rounded-xl border border-border/70 bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border/60 px-4 sm:px-5 py-3 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApplyFilters}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 active:scale-[0.98] transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
           disabled={!currentUser.id}
-          className="mb-2 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:brightness-110 transition disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:brightness-110 transition disabled:opacity-60"
         >
           <Plus className="h-4 w-4" />
           Create Approval
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-border/70 bg-card/50 p-4 md:grid-cols-5">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search approvals..."
-          className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-        />
-
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-        >
-          <option value="">All Types</option>
-          {typeOptions.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={departmentFilter}
-          onChange={(e) => setDepartmentFilter(e.target.value)}
-          className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-        >
-          <option value="">All Departments</option>
-          {departmentOptions.map((department) => (
-            <option key={department} value={department}>
-              {department}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="date"
-          value={createdDateFilter}
-          onChange={(e) => setCreatedDateFilter(e.target.value)}
-          className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-        />
-
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="w-full rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          Reset Filters
         </button>
       </div>
 
